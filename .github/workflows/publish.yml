@@ -2,7 +2,7 @@ name: Build and Publish
 
 on:
   push:
-    branches: [ ] # Set to master when ready
+    branches: [ master ]
 
 jobs:
   publish:
@@ -27,8 +27,10 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Test
+      if: false # TODO Enable when tasks support remote execution
       run: dotnet test --no-restore --verbosity normal
     - name: Publish  
+      if: false # TODO Enable when ready to publish
       uses: brandedoutcast/publish-nuget@v2.5.2  
       with:   
         PROJECT_FILE_PATH: ViscaNet/ViscaNet.csproj  

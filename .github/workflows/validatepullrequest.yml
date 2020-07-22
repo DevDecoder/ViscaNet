@@ -1,8 +1,6 @@
 name: Validate Pull Request
 
 on:
-  push:
-    branches: [ master ] # TOOD Remove this when ready to publish NuGets, and instead enable the publish.yml workflow
   pull_request:
     branches: [ master ] 
 
@@ -27,8 +25,7 @@ jobs:
     - name: Install dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --configuration Release --no-restore
-      
-    # TODO Add back when tests working remotely
-    #- name: Test
-    #  run: dotnet test --no-restore --verbosity normal
+      run: dotnet build --configuration Release --no-restore      
+    - name: Test
+      if: false # TODO Enable when tasks support remote execution
+      run: dotnet test --no-restore --verbosity normal

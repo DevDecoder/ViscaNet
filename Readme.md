@@ -1,8 +1,7 @@
-<!-- TODO change badges on release
 ![Publish](https://github.com/DevDecoder/ViscaNet/workflows/Build%20and%20Publish/badge.svg)
+<!-- Add badge once released
 ![Nuget](https://img.shields.io/nuget/v/ViscaNet)
 -->
-![Build](https://github.com/DevDecoder/ViscaNet/workflows/Validate%20Pull%20Request/badge.svg)
 
 # Description
 This library provides a cross-platform service for communicating with PTZ cameras using Sony's VISCA protocol over *TCP* (note UDP is not currently supported due to it's reliability issues which can result in a camera's command sockets filling).

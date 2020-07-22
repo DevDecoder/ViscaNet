@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <PackageId>ViscaNet</PackageId>
+    <Authors>Craig Dean</Authors>
+    <Company>DevDecoder</Company>
+    <PackageDescription>Cross-platform .NET Standard library for communicating with PTZ cameras using Sony's VISCA protocol over TCP.</PackageDescription>
+    <RepositoryUrl>https://github.com/DevDecoder/ViscaNet</RepositoryUrl>
+    <Description>Cross-platform .NET Standard library for communicating with PTZ cameras using Sony's VISCA protocol over TCP.</Description>
+    <Copyright>2020 Craig Dean</Copyright>
+    <PackageLicenseFile></PackageLicenseFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/DevDecoder/ViscaNet</PackageProjectUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>Visca, Sony, PTZ, Camera, TCP, .NET, Cross-platform</PackageTags>
+    <PackageIcon>DevDecoder Icon.png</PackageIcon>
+    <PackageReleaseNotes>Initial working release.</PackageReleaseNotes>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <SignAssembly>false</SignAssembly>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DynamicData" Version="6.16.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0-preview.6.20305.6" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="16.6.13" />
+    <PackageReference Include="Nito.AsyncEx" Version="5.0.0" />
+    <PackageReference Include="System.IO.Pipelines" Version="5.0.0-preview.6.20305.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\DevDecoder Icon.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+</Project>

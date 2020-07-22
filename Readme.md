@@ -1,4 +1,4 @@
-![Publish](https://github.com/DevDecoder/ViscaNet/workflows/Build%20and%20Publish/badge.svg)
+[![Publish](https://github.com/DevDecoder/ViscaNet/workflows/Build%20and%20Publish/badge.svg)](https://github.com/DevDecoder/ViscaNet/actions?query=workflow%3A%22Build+and+Publish%22)
 <!-- Add badge once released
 ![Nuget](https://img.shields.io/nuget/v/ViscaNet)
 -->

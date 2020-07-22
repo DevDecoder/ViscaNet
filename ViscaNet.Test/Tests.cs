@@ -11,22 +11,18 @@ using Xunit.Abstractions;
 
 namespace ViscaNet.Test
 {
-    public class Tests
+    public sealed class Tests : TestsBase
     {
-        public Tests(ITestOutputHelper outputHelper)
+        public Tests(ITestOutputHelper outputHelper) : base(outputHelper)
         {
-            OutputHelper = outputHelper;
         }
 
-        private ITestOutputHelper OutputHelper { get; }
-
-        [Fact]
+        [Fact(Timeout=5000)]
         public async Task TestCancelAsync()
         {
-            using var logger = OutputHelper.BuildDisposableLoggerFor<CameraConnection>(CustomLogFormatter.Current);
             using var connection = new CameraConnection(
                 new IPEndPoint(IPAddress.Parse("192.168.1.201"), 1259),
-                logger: logger);
+                logger: Logger);
             var task1 = connection.ResetAsync();
             var task2 = connection.HomeAsync();
             var task3 = connection.CancelAsync();
@@ -48,52 +44,49 @@ namespace ViscaNet.Test
             Assert.True(connection.IsConnected);
         }
 
-        [Fact]
+        [Fact(Timeout = 5000)]
         public async Task TestInquiriesAsync()
         {
-            using var logger = OutputHelper.BuildDisposableLoggerFor<CameraConnection>(CustomLogFormatter.Current);
             var cts = new CancellationTokenSource(10000);
             using var connection = new CameraConnection(
                 new IPEndPoint(IPAddress.Parse("192.168.1.201"), 1259),
-                logger: logger);
+                logger: Logger);
 
             var powerMode = await connection.PowerInquiryAsync(cts.Token);
-            OutputHelper.WriteLine($"Power result: {powerMode}");
+            Context.WriteLine($"Power result: {powerMode}");
 
             var zoom = await connection.ZoomInquiryAsync(cts.Token);
-            OutputHelper.WriteLine($"Zoom result: {zoom*100:f2}%");
+            Context.WriteLine($"Zoom result: {zoom * 100:f2}%");
             Assert.True(connection.IsConnected);
         }
 
-        [Fact]
+        [Fact(Skip="Long Running", Timeout = 22000)]
         public async Task TestInvalidConnectionDefaultTimeoutAsync()
         {
-            using var logger = OutputHelper.BuildDisposableLoggerFor<CameraConnection>(CustomLogFormatter.Current);
             using var connection = new CameraConnection(
                 new IPEndPoint(IPAddress.Parse("192.168.1.200"), 1259),
-                logger: logger);
+                logger: Logger);
 
             var timestamp = Stopwatch.GetTimestamp();
             await Assert.ThrowsAsync<TaskCanceledException>(() => connection.HomeAsync());
             var delaySecs = (double)(Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency;
-            OutputHelper.WriteLine($"Task cancelled after {delaySecs:F3}s");
+            Context.WriteLine($"Task cancelled after {delaySecs:F3}s");
             Assert.False(connection.IsConnected);
         }
 
-        [Fact]
+        [Fact(Skip = "Long running", Timeout = 8000)]
         public async Task TestInvalidConnectionExplicitTimeoutAsync()
         {
-            using var logger = OutputHelper.BuildDisposableLoggerFor<CameraConnection>(CustomLogFormatter.Current);
             const int timeoutSecs = 5;
             using var connection = new CameraConnection(
                 new IPEndPoint(IPAddress.Parse("192.168.1.200"), 1259),
-                logger: logger);
+                logger: Logger);
 
             var timestamp = Stopwatch.GetTimestamp();
             var cts = new CancellationTokenSource(timeoutSecs * 1000);
             await Assert.ThrowsAsync<TaskCanceledException>(() => connection.HomeAsync(cts.Token));
             var delaySecs = (double)(Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency;
-            OutputHelper.WriteLine($"Task cancelled after {delaySecs:F3}s");
+            Context.WriteLine($"Task cancelled after {delaySecs:F3}s");
             Assert.True(delaySecs >= timeoutSecs && delaySecs < (timeoutSecs * 1.15D));
             Assert.False(connection.IsConnected);
         }

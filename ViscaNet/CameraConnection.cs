@@ -23,7 +23,7 @@ namespace ViscaNet
         private readonly ConcurrentQueue<Command> _commandQueue;
         private readonly int _connectionTimeout;
 
-        private readonly ILogger<CameraConnection>? _logger;
+        private readonly ILogger? _logger;
         private readonly int _maxTimeout;
         private readonly ManualResetEvent? _newCommandReceivedEvent;
         private readonly int _retryTimeout;
@@ -38,7 +38,7 @@ namespace ViscaNet
             ushort maxTimeout = 20000,
             ushort retryTimeout = 1000,
             ushort connectionTimeout = 5000,
-            ILogger<CameraConnection>? logger = null)
+            ILogger? logger = null)
         {
             EndPoint = endPoint;
             Name = name ?? endPoint.ToString();

@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using ViscaNet.Commands;
 using Xunit;
 
 namespace ViscaNet.Test.TestData

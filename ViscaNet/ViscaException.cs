@@ -1,4 +1,5 @@
 ﻿using System;
+using ViscaNet.Commands;
 
 namespace ViscaNet
 {

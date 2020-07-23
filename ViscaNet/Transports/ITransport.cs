@@ -2,9 +2,11 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
+using ViscaNet.Commands;
 
-namespace ViscaNet
+namespace ViscaNet.Transports
 {
     public interface IViscaTransportFactory
     {
@@ -13,7 +15,8 @@ namespace ViscaNet
 
     public interface IViscaTransport : IDisposable
     {
-        Task ConnectAsync(int timeout);
-        Task<ViscaResponse> SendCommandAsync(ViscaCommand command);
+        Task<bool> ConnectAsync(CancellationToken cancellationToken = default);
+        Task<ViscaResponse> SendAsync(ViscaCommand command, CancellationToken cancellationToken = default);
+        IObservable<bool> ConnectionState { get; }
     }
 }

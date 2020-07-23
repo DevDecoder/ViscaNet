@@ -9,8 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Threading;
 
-namespace ViscaNet
+namespace ViscaNet.Transports
 {
+    // TODO
     internal class UdpConnection : IDisposable
     {
         private UdpClient? _client;

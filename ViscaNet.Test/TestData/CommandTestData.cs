@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Extensions.Logging;
+using ViscaNet.Commands;
 using Xunit;
 
 namespace ViscaNet.Test.TestData
@@ -17,7 +18,9 @@ namespace ViscaNet.Test.TestData
                 new (ViscaCommand, byte[]?, object?, LogLevel, string?)[]
                 {
                     (ViscaCommand.IFClear, null, null, LogLevel.None, null),
-                    (ViscaCommand.Cancel, null, null, LogLevel.None, null),
+                    (ViscaCommand.Cancel(0x0), null, null, LogLevel.None, null),
+                    (ViscaCommand.Cancel(), null, null, LogLevel.None, null),
+                    (ViscaCommand.Cancel(0xF), null, null, LogLevel.None, null),
                     (ViscaCommand.Reset, null, null, LogLevel.None, null),
                     (ViscaCommand.Home, null, null, LogLevel.None, null),
                     (ViscaCommand.PowerOn, null, null, LogLevel.None, null),

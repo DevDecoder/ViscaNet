@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using Microsoft.Extensions.Logging;
+using ViscaNet.Commands;
 using ViscaNet.Test.TestData;
 using Xunit;
 using Xunit.Abstractions;
@@ -62,7 +63,7 @@ namespace ViscaNet.Test
                 }
 
                 // Check result
-                Assert.Equal(expectedResponse, response.ResponseObject);
+                Assert.Equal(expectedResponse, response.ResultObject);
                 return;
             }
 

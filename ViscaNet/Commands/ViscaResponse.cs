@@ -2,12 +2,10 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace ViscaNet
+namespace ViscaNet.Commands
 {
     public class ViscaResponse
     {
@@ -30,7 +28,7 @@ namespace ViscaNet
         /// </summary>
         /// <value>The response.</value>
         [MaybeNull]
-        public virtual object? ResponseObject => null;
+        public virtual object? ResultObject => null;
 
         /// <summary>
         /// Returns true if this is a valid command response.

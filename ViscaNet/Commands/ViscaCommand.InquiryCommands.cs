@@ -1,9 +1,10 @@
 ﻿// Licensed under the Apache License, Version 2.0 (the "License").
 // See the LICENSE file in the project root for more information.
 
+using System;
 using Microsoft.Extensions.Logging;
 
-namespace ViscaNet
+namespace ViscaNet.Commands
 {
     public partial class ViscaCommand
     {
@@ -66,7 +67,8 @@ namespace ViscaNet
                 // Convert to value between 0 and 1.
                 result = raw / 16384D;
                 return true;
-            }
+            },
+            0x04, 0x47
         );
     }
 }

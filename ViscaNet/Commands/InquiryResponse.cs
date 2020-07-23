@@ -5,7 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
-namespace ViscaNet
+namespace ViscaNet.Commands
 {
     public sealed class InquiryResponse<T> : ViscaResponse
     {
@@ -21,14 +21,14 @@ namespace ViscaNet
         /// Gets the response as an object.
         /// </summary>
         /// <value>The response.</value>
-        public override object? ResponseObject => Response;
+        public override object? ResultObject => Result;
 
         /// <summary>
         /// Gets the response as an object.
         /// </summary>
         /// <value>The response.</value>
         [MaybeNull]
-        public T Response { get; }
+        public T Result { get; }
 
         /// <summary>
         /// Returns true if this is a valid inquiry response.
@@ -38,7 +38,7 @@ namespace ViscaNet
 
         /// <inheritdoc />
         private InquiryResponse(uint data, [MaybeNull] T response) : base(data) 
-            => Response = response;
+            => Result = response;
 
         public new static InquiryResponse<T> Get(ViscaResponseType type, byte deviceId = 1, byte socket = 0)
             => s_cache.GetOrAdd(GetData(type, deviceId, socket), d => new InquiryResponse<T>(d, default!));

@@ -6,6 +6,8 @@ using System.Diagnostics;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using ViscaNet.Commands;
+using ViscaNet.Transports;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -16,79 +18,51 @@ namespace ViscaNet.Test
         public Tests(ITestOutputHelper outputHelper) : base(outputHelper)
         {
         }
-
-        [Fact(Timeout=5000)]
-        public async Task TestCancelAsync()
-        {
-            using var connection = new CameraConnection(
-                new IPEndPoint(IPAddress.Parse("192.168.1.201"), 1259),
-                logger: Logger);
-            var task1 = connection.ResetAsync();
-            var task2 = connection.HomeAsync();
-            var task3 = connection.CancelAsync();
-            var task4 = connection.HomeAsync();
-            try
-            {
-                await Task.WhenAll(task1, task2, task3, task4);
-            }
-            catch (TaskCanceledException)
-            {
-            }
-
-            Assert.True(task1.IsCanceled);
-            Assert.True(task2.IsCanceled);
-            Assert.False(task3.IsCanceled);
-            Assert.True(task3.IsCompleted);
-            Assert.False(task4.IsCanceled);
-            Assert.True(task4.IsCompleted);
-            Assert.True(connection.IsConnected);
-        }
-
+        
         [Fact(Timeout = 5000)]
         public async Task TestInquiriesAsync()
         {
             var cts = new CancellationTokenSource(10000);
-            using var connection = new CameraConnection(
-                new IPEndPoint(IPAddress.Parse("192.168.1.201"), 1259),
-                logger: Logger);
+            using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,
+                logger: GetLogger<CameraConnection>());
 
-            var powerMode = await connection.PowerInquiryAsync(cts.Token);
-            Context.WriteLine($"Power result: {powerMode}");
+            var powerMode = await connection.SendAsync(ViscaCommand.InquirePower, cts.Token)
+                .ConfigureAwait(false);
+            Context.WriteLine($"Power result: {powerMode.Result}");
 
-            var zoom = await connection.ZoomInquiryAsync(cts.Token);
-            Context.WriteLine($"Zoom result: {zoom * 100:f2}%");
+            var zoom = await connection.SendAsync(ViscaCommand.InquireZoom, cts.Token)
+                .ConfigureAwait(false);
+            Context.WriteLine($"Zoom result: {zoom.Result * 100:f2}%");
             Assert.True(connection.IsConnected);
         }
 
         [Fact(Skip="Long Running", Timeout = 22000)]
         public async Task TestInvalidConnectionDefaultTimeoutAsync()
         {
-            using var connection = new CameraConnection(
-                new IPEndPoint(IPAddress.Parse("192.168.1.200"), 1259),
-                logger: Logger);
-
+            using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,
+                logger: GetLogger<CameraConnection>());
             var timestamp = Stopwatch.GetTimestamp();
-            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.HomeAsync());
+            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.SendAsync(ViscaCommand.Home));
             var delaySecs = (double)(Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency;
             Context.WriteLine($"Task cancelled after {delaySecs:F3}s");
             Assert.False(connection.IsConnected);
         }
 
-        [Fact(Skip = "Long running", Timeout = 8000)]
-        public async Task TestInvalidConnectionExplicitTimeoutAsync()
+        [Fact(Timeout = 2000)]
+        public async Task Invalid_connection_explicit_timeout_Async()
         {
-            const int timeoutSecs = 5;
-            using var connection = new CameraConnection(
-                new IPEndPoint(IPAddress.Parse("192.168.1.200"), 1259),
-                logger: Logger);
-
+            const int msTimeout = 100;
+            using var connection = new CameraConnection(IPAddress.Parse("127.0.0.1"), 65000,
+                logger: GetLogger<CameraConnection>());
             var timestamp = Stopwatch.GetTimestamp();
-            var cts = new CancellationTokenSource(timeoutSecs * 1000);
-            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.HomeAsync(cts.Token));
-            var delaySecs = (double)(Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency;
-            Context.WriteLine($"Task cancelled after {delaySecs:F3}s");
-            Assert.True(delaySecs >= timeoutSecs && delaySecs < (timeoutSecs * 1.15D));
+            var cts = new CancellationTokenSource(msTimeout);
+            var response = await connection.SendAsync(ViscaCommand.Home, cts.Token).ConfigureAwait(false);
+            var msDelay = (1000D * (Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency);
+            Context.WriteLine($"SendAsync returned after {msDelay:F3}ms");
+            Assert.True(msDelay >= msTimeout && msDelay < (msTimeout * 1.5D));
             Assert.False(connection.IsConnected);
+            Assert.False(response.IsValid);
+            Assert.Equal(ViscaResponseType.Unknown, response.Type);
         }
     }
 }

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
-namespace ViscaNet
+namespace ViscaNet.Commands
 {
     public partial class ViscaCommand
     {
@@ -25,26 +25,14 @@ namespace ViscaNet
             _payload = payload;
         }
 
-        public IEnumerable<byte> GetMessage(byte deviceId = 1, byte socket = 0)
+        internal virtual ViscaResponse UnknownResponse => ViscaResponse.Unknown;
+
+        public virtual IEnumerable<byte> GetMessage(byte deviceId = 1)
         {
             if (deviceId > 7)
                 throw new ArgumentOutOfRangeException(nameof(deviceId), deviceId, $"The device id '{deviceId}' must be between 0 and 7, usually it should be 1 for Visca over IP.");
             yield return (byte)(0x80 + deviceId);
-
-            if (Type == ViscaCommandType.Cancel)
-            {
-                if (socket > 0xf)
-                    throw new ArgumentOutOfRangeException(nameof(socket), socket,
-                        $"The socket '{socket}' must be between 0 and 0xf (15) for a '{Type}' command.");
-                yield return (byte)(Type + socket);
-            }
-            else
-            {
-                if (socket > 0)
-                    throw new ArgumentOutOfRangeException(nameof(socket), socket,
-                        $"The socket '{socket}' is not valid on a '{Type}' command.");
-                yield return (byte)Type;
-            }
+            yield return (byte)Type;
 
             var payloadLength = _payload.Length;
             if (payloadLength > 0)
@@ -128,12 +116,21 @@ namespace ViscaNet
             ViscaResponseType type;
             if (b == 0x50)
             {
-                type = ViscaResponseType.Inquiry;
-                if (Type != ViscaCommandType.Inquiry)
+                // Normally we get back a 0x51 for completions, but the IFClear command uses broadcast device 0, so actually
+                // return 0x50 0xFF for completion, so we disambiguate here.
+                if (response[offset] == 0xFF)
                 {
-                    logger?.LogError(
-                        $"The '{type}' response was not expected for the '{Type}' type.");
-                    return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                    type = ViscaResponseType.Completion;
+                }
+                else
+                {
+                    type = ViscaResponseType.Inquiry;
+                    if (Type != ViscaCommandType.Inquiry)
+                    {
+                        logger?.LogError(
+                            $"The '{type}' response was not expected for the '{Type}' type.");
+                        return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                    }
                 }
             }
             else

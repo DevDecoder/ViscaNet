@@ -2,13 +2,10 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Linq;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
-namespace ViscaNet
+namespace ViscaNet.Commands
 {
-    public delegate bool TryParseInquiryResponseDelegate<T>(byte[] payload, int offset, int count, out T result, ILogger? logger);
     public class InquiryCommand<T> : ViscaCommand
     {
         private readonly int _payloadSize;
@@ -20,6 +17,8 @@ namespace ViscaNet
             _payloadSize = payloadSize;
             _tryParseResponseDelegate = tryParseResponseDelegate;
         }
+
+        internal virtual ViscaResponse UnknownResponse => InquiryResponse<T>.Unknown;
 
         public new InquiryResponse<T> GetResponse(byte[] response, int offset = 0, int count = -1, ILogger? logger = null)
             => (InquiryResponse<T>)DoGetResponse(response, ref offset, ref count, logger);
@@ -37,7 +36,7 @@ namespace ViscaNet
 
             // Remove first two bytes, and final byte from count
             count--;
-            
+
             // Check remaining payload length
             if (count != _payloadSize)
             {
@@ -49,7 +48,7 @@ namespace ViscaNet
             // Finally parse payload
             return !_tryParseResponseDelegate(response, offset, count, out var result, logger)
                 // Trust the delegate to log any failure reasons
-                ? InquiryResponse<T>.Get(ViscaResponseType.Unknown, deviceId) 
+                ? InquiryResponse<T>.Get(ViscaResponseType.Unknown, deviceId)
                 : InquiryResponse<T>.Get(result, deviceId);
         }
     }

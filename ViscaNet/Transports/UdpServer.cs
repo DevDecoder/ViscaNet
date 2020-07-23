@@ -14,8 +14,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
 
-namespace ViscaNet
+namespace ViscaNet.Transports
 {
+    // TODO
     internal class UdpServer : IDisposable
     {
         private readonly Dictionary<IPEndPoint, (UdpConnection connection, PipeWriter writer)> _connections =

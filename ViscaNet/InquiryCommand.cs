@@ -29,23 +29,10 @@ namespace ViscaNet
             var baseResponse = base.DoGetResponse(response, ref offset, ref count, logger);
             var deviceId = baseResponse.DeviceId;
             var type = baseResponse.Type;
-            switch (type)
+            if (type != ViscaResponseType.Inquiry)
             {
-                case ViscaResponseType.InquiryResponse:
-                    // Only valid response
-                    break;
-                case ViscaResponseType.Completion:
-                case ViscaResponseType.ACK:
-                    // The responses are not valid on an inquiry.
-                    logger?.LogError(
-                        $"The inquiry command did not expect the '{type}' response.");
-
-                    return deviceId == 0
-                        ? InquiryResponse<T>.Unknown
-                        : InquiryResponse<T>.Get(ViscaResponseType.Unknown, deviceId, baseResponse.Socket);
-                default:
-                    // All other responses are effectively errors
-                    return InquiryResponse<T>.Get(type, deviceId, baseResponse.Socket);
+                // All other responses are effectively errors and should already have a log.
+                return InquiryResponse<T>.Get(type, deviceId, baseResponse.Socket);
             }
 
             // Remove first two bytes, and final byte from count

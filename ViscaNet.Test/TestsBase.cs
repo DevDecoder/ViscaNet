@@ -2,10 +2,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Runtime.CompilerServices;
@@ -47,6 +45,9 @@ namespace ViscaNet.Test
 
             public IDisposable BeginScope<TState>(TState state)
             {
+                if (state is null)
+                    return Disposable.Empty;
+
                 _scopes.Push(state);
                 return Disposable.Create(state, s =>
                 {

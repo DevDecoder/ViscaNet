@@ -355,7 +355,7 @@ namespace ViscaNet
                             case ViscaResponseType.ACK:
                                 // Expected
                                 break;
-                            case ViscaResponseType.InquiryResponse:
+                            case ViscaResponseType.Inquiry:
                                 if (!command.IsInquiry)
                                 {
                                     goto default;
@@ -366,7 +366,7 @@ namespace ViscaNet
                                 // Mark message as completed
                                 command.TrySetResult(message);
                                 continue;
-                            case ViscaResponseType.CommandCanceled:
+                            case ViscaResponseType.Canceled:
                                 command.TryCancel();
                                 continue;
                             default:
@@ -375,7 +375,7 @@ namespace ViscaNet
                                 command.TrySetException(exception);
 
                                 // The command not executable does not indicate a serious issue, so we don't reset the connection for it.
-                                if (type != ViscaResponseType.CommandNotExecutable)
+                                if (type != ViscaResponseType.NotExecutable)
                                 {
                                     resetConnection = true;
                                 }
@@ -400,7 +400,7 @@ namespace ViscaNet
                                 // Mark message as completed
                                 command.TrySetResult(message);
                                 continue;
-                            case ViscaResponseType.CommandCanceled:
+                            case ViscaResponseType.Canceled:
                                 command.TryCancel();
                                 continue;
                             default:
@@ -410,7 +410,7 @@ namespace ViscaNet
                                 command.TrySetException(exception);
 
                                 // The command not executable does not indicate a serious issue, so we don't reset the connection for it.
-                                if (type != ViscaResponseType.CommandNotExecutable)
+                                if (type != ViscaResponseType.NotExecutable)
                                 {
                                     resetConnection = true;
                                 }
@@ -487,7 +487,7 @@ namespace ViscaNet
                             case 0x50:
                                 type = l == 3
                                     ? ViscaResponseType.Completion
-                                    : ViscaResponseType.InquiryResponse;
+                                    : ViscaResponseType.Inquiry;
                                 break;
                             case 0x60:
                                 type = l != 4
@@ -496,10 +496,10 @@ namespace ViscaNet
                                     {
                                         0x01 => ViscaResponseType.MessageLengthError,
                                         0x02 => ViscaResponseType.SyntaxError,
-                                        0x03 => ViscaResponseType.CommandBufferFull,
-                                        0x04 => ViscaResponseType.CommandCanceled,
+                                        0x03 => ViscaResponseType.BufferFull,
+                                        0x04 => ViscaResponseType.Canceled,
                                         0x05 => ViscaResponseType.NoSocket,
-                                        0x41 => ViscaResponseType.CommandNotExecutable,
+                                        0x41 => ViscaResponseType.NotExecutable,
                                         _ => ViscaResponseType.Unknown
                                     };
                                 break;
@@ -598,24 +598,17 @@ namespace ViscaNet
             }
         }
 
-        #region Visca Constants
         private const byte ViscaDeviceHeader = 0x81;
         private const byte ViscaCommand = 0x01;
         private const byte ViscaInquiry = 0x09;
-        #endregion
 
-        #region Visca Commands
         private static readonly byte[] HomeBytes = {ViscaDeviceHeader, ViscaCommand, 0x06, 0x04, 0xFF};
         private static readonly byte[] ResetBytes = {ViscaDeviceHeader, ViscaCommand, 0x06, 0x05, 0xFF};
         private static readonly byte[] CancelBytes = {ViscaDeviceHeader, 0x21, 0xFF};
-        #endregion
 
-        #region Visca Inquiries
         private static readonly byte[] InqPowerBytes = {ViscaDeviceHeader, ViscaInquiry, 0x04, 0x00, 0xFF};
         private static readonly byte[] InqZoomBytes = {ViscaDeviceHeader, ViscaInquiry, 0x04, 0x47, 0xFF};
         private static readonly byte[] InqFocusModeBytes = {ViscaDeviceHeader, ViscaInquiry, 0x04, 0x38, 0xFF};
         private static readonly byte[] InqFocusPosBytes = {ViscaDeviceHeader, ViscaInquiry, 0x04, 0x48, 0xFF};
-
-        #endregion
     }
 }

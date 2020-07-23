@@ -18,7 +18,13 @@ namespace ViscaNet
         public new static readonly InquiryResponse<T> Unknown = Get(ViscaResponseType.Unknown, 0, 0);
 
         /// <summary>
-        /// Gets the response.
+        /// Gets the response as an object.
+        /// </summary>
+        /// <value>The response.</value>
+        public override object? ResponseObject => Response;
+
+        /// <summary>
+        /// Gets the response as an object.
         /// </summary>
         /// <value>The response.</value>
         [MaybeNull]
@@ -28,7 +34,7 @@ namespace ViscaNet
         /// Returns true if this is a valid inquiry response.
         /// </summary>
         /// <value><see langword="true" /> if this instance is valid; otherwise, <see langword="false" />.</value>
-        public bool IsValid => Type == ViscaResponseType.InquiryResponse;
+        public override bool IsValid => Type == ViscaResponseType.Inquiry;
 
         /// <inheritdoc />
         private InquiryResponse(uint data, [MaybeNull] T response) : base(data) 
@@ -38,6 +44,6 @@ namespace ViscaNet
             => s_cache.GetOrAdd(GetData(type, deviceId, socket), d => new InquiryResponse<T>(d, default!));
 
         public static InquiryResponse<T> Get(T result, byte deviceId = 1)
-            => new InquiryResponse<T>(GetData(ViscaResponseType.InquiryResponse, deviceId, 0), result);
+            => new InquiryResponse<T>(GetData(ViscaResponseType.Inquiry, deviceId, 0), result);
     }
 }

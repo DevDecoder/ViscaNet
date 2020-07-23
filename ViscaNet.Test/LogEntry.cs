@@ -11,18 +11,18 @@ namespace ViscaNet.Test
     {
         public LogLevel LogLevel { get; }
         public EventId EventId { get; }
-        public Exception Exception { get; }
+        public Exception? Exception { get; }
         public string Message { get; }
         public IReadOnlyList<object> Scope { get; }
 
-        internal LogEntry(LogLevel logLevel, EventId eventId, Exception exception, string message,
-            IReadOnlyList<object> scope)
+        public LogEntry(LogLevel logLevel, EventId eventId, Exception? exception, string message,
+            IReadOnlyList<object>? scope)
         {
             LogLevel = logLevel;
             EventId = eventId;
             Exception = exception;
             Message = message;
-            Scope = scope;
+            Scope = scope ?? Array.Empty<object>();
         }
     }
 

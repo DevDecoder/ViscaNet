@@ -23,7 +23,7 @@ namespace ViscaNet
         /// <summary>
         ///     The inquiry completion response.
         /// </summary>
-        InquiryResponse = 0x5000,
+        Inquiry = 0x5000,
 
         /// <summary>
         ///     The completion response.
@@ -43,12 +43,12 @@ namespace ViscaNet
         /// <summary>
         ///     The command buffer full response.
         /// </summary>
-        CommandBufferFull = 0x6003,
+        BufferFull = 0x6003,
 
         /// <summary>
         ///     The command canceled response.
         /// </summary>
-        CommandCanceled = 0x6004,
+        Canceled = 0x6004,
 
         /// <summary>
         ///     The no socket response.
@@ -59,6 +59,6 @@ namespace ViscaNet
         ///     The command not executable response, occurs when the device is too busy,
         ///     or unable to execute a command due to it's current mode (e.g. auto focus).
         /// </summary>
-        CommandNotExecutable = 0x6041
+        NotExecutable = 0x6041
     }
 }

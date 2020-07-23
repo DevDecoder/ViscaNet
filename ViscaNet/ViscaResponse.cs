@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ViscaNet
 {
@@ -23,6 +24,21 @@ namespace ViscaNet
         public ViscaResponseType Type => (ViscaResponseType)(_data & 0xFFFF);
         public byte DeviceId => (byte)((_data >> 16) & 0xFF);
         public byte Socket => (byte)((_data >> 24) & 0xFF);
+
+        /// <summary>
+        /// Gets the response, if an <see cref="InquiryResponse{T}"/>; otherwise <see langword="null"/>.
+        /// </summary>
+        /// <value>The response.</value>
+        [MaybeNull]
+        public virtual object? ResponseObject => null;
+
+        /// <summary>
+        /// Returns true if this is a valid command response.
+        /// </summary>
+        /// <value><see langword="true" /> if this instance is valid; otherwise, <see langword="false" />.</value>
+        public virtual bool IsValid
+            => Type == ViscaResponseType.Completion ||
+               Type == ViscaResponseType.Canceled;
 
         protected ViscaResponse(uint data)
         {

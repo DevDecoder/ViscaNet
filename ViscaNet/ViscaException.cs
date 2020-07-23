@@ -18,16 +18,16 @@ namespace ViscaNet
             responseType switch
             {
                 ViscaResponseType.ACK => $"An unexpected ACK was received from {name}.",
-                ViscaResponseType.InquiryResponse => $"An unexpected inquiry response was received from {name}.",
+                ViscaResponseType.Inquiry => $"An unexpected inquiry response was received from {name}.",
                 ViscaResponseType.Completion => $"An unexpected completion was received from {name}.",
                 ViscaResponseType.MessageLengthError => $"A message length error was received from {name}.",
                 ViscaResponseType.SyntaxError => $"A syntax error response was received from {name}.",
-                ViscaResponseType.CommandBufferFull => $"A command buffer full response was received from {name}.",
-                ViscaResponseType.CommandCanceled =>
+                ViscaResponseType.BufferFull => $"A command buffer full response was received from {name}.",
+                ViscaResponseType.Canceled =>
                 $"An unexpected command canceled response was received from {name}.",
                 ViscaResponseType.NoSocket =>
                 $"A response was received from {name} that indicates there was no appropriate socket command to cancel.",
-                ViscaResponseType.CommandNotExecutable =>
+                ViscaResponseType.NotExecutable =>
                 $"A response was received from {name} indicating that the command could not be executed at this time.",
                 _ => $"An unknown response was received from {name}."
             };

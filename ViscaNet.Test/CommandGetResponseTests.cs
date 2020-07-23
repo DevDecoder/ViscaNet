@@ -20,6 +20,64 @@ namespace ViscaNet.Test
         }
 
         [Theory]
+        [ClassData(typeof(CommandTestData))]
+        public void InquiryResponse_response(
+            ViscaCommand command,
+            byte[] expectedData, 
+            object? expectedResponse, 
+            LogLevel expectedLogLevel, 
+            string? expectedLogMessage)
+        {
+            var response = command.GetResponse(expectedData, logger: Logger);
+
+            Assert.Equal(1, response.DeviceId);
+            Assert.Equal(0, response.Socket);
+
+            if (command.Type == ViscaCommandType.Inquiry)
+            {
+                if (expectedLogLevel != LogLevel.None)
+                {
+                    if (expectedLogLevel >= LogLevel.Error)
+                    {
+                        Assert.False(response.IsValid);
+                        Assert.Equal(ViscaResponseType.Unknown, response.Type);
+                    }
+                    else
+                    {
+                        Assert.True(response.IsValid);
+                        Assert.Equal(ViscaResponseType.Inquiry, response.Type);
+                    }
+
+                    // Check for log
+                    Assert.Equal(1, LogEntryCount);
+                    var lastLog = LogEntries.Last();
+                    Assert.Equal(expectedLogLevel, lastLog.LogLevel);
+                    Assert.Equal(expectedLogMessage, lastLog.Message);
+                }
+                else
+                {
+                    Assert.True(response.IsValid);
+                    Assert.Equal(ViscaResponseType.Inquiry, response.Type);
+                    Assert.Equal(0, LogEntryCount);
+                }
+
+                // Check result
+                Assert.Equal(expectedResponse, response.ResponseObject);
+                return;
+            }
+
+            Assert.False(response.IsValid);
+            Assert.Equal(ViscaResponseType.Unknown, response.Type);
+            // Check for error
+            Assert.Equal(1, LogEntryCount);
+            var error = LogEntries.Last();
+            Assert.Equal(LogLevel.Error, error.LogLevel);
+            Assert.Equal(
+                $"The '{nameof(ViscaResponseType.Inquiry)}' response was not expected for the '{command.Type}' type.",
+                error.Message);
+        }
+
+        [Theory]
         [ClassData(typeof(NoResponsesTestData))]
         public void Ack_response(ViscaCommand command)
         {
@@ -157,58 +215,6 @@ namespace ViscaNet.Test
                 Assert.Equal($"The '{nameof(ViscaResponseType.Completion)}' response was not expected for the '{command.Type}' type.",
                     lastLog.Message);
             }
-        }
-
-        [Theory]
-        [ClassData(typeof(CommandTestData))]
-        public void InquiryResponse_response(ViscaCommand command, byte[] expectedData, object? expectedResponse)
-        {
-            var response = command.GetResponse(expectedData, logger: Logger);
-
-            Assert.Equal(1, response.DeviceId);
-            Assert.Equal(0, response.Socket);
-
-            if (command.Type == ViscaCommandType.Inquiry)
-            {
-                if (expectedResponse is ExpectedLog expectedLog)
-                {
-                    if (expectedLog.LogLevel >= LogLevel.Error)
-                    {
-                        Assert.False(response.IsValid);
-                        Assert.Equal(ViscaResponseType.Unknown, response.Type);
-                    }
-                    else
-                    {
-                        Assert.True(response.IsValid);
-                        Assert.Equal(ViscaResponseType.Inquiry, response.Type);
-                    }
-                    // Check result
-                    Assert.Equal(expectedLog.Result, response.ResponseObject);
-
-                    // Check for log
-                    Assert.Equal(1, LogEntryCount);
-                    var lastLog = LogEntries.Last();
-                    Assert.Equal(expectedLog.LogLevel, lastLog.LogLevel);
-                    Assert.Equal(expectedLog.Message, lastLog.Message);
-                    return;
-                }
-
-                Assert.True(response.IsValid);
-                Assert.Equal(ViscaResponseType.Inquiry, response.Type);
-                Assert.Equal(0, LogEntryCount);
-                Assert.Equal(expectedResponse, response.ResponseObject);
-                return;
-            }
-
-            Assert.False(response.IsValid);
-            Assert.Equal(ViscaResponseType.Unknown, response.Type);
-            // Check for error
-            Assert.Equal(1, LogEntryCount);
-            var error = LogEntries.Last();
-            Assert.Equal(LogLevel.Error, error.LogLevel);
-            Assert.Equal(
-                $"The '{nameof(ViscaResponseType.Inquiry)}' response was not expected for the '{command.Type}' type.",
-                error.Message);
         }
 
         [Theory]
@@ -427,7 +433,7 @@ namespace ViscaNet.Test
 
         [Theory]
         [ClassData(typeof(NoResponsesTestData))]
-        public void Response_too_short_2_bytes__error(ViscaCommand command)
+        public void Response_too_short_2_bytes_error(ViscaCommand command)
         {
             var response = command.GetResponse(new byte[] { 0xA0, 0x43 }, logger: Logger);
             Assert.False(response.IsValid);

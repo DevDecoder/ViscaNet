@@ -25,7 +25,7 @@ namespace ViscaNet
             _payload = payload;
         }
 
-        public IEnumerable<byte> GetMessage(byte deviceId = 1, byte socket = 1)
+        public IEnumerable<byte> GetMessage(byte deviceId = 1, byte socket = 0)
         {
             if (deviceId > 7)
                 throw new ArgumentOutOfRangeException(nameof(deviceId), deviceId, $"The device id '{deviceId}' must be between 0 and 7, usually it should be 1 for Visca over IP.");
@@ -34,12 +34,15 @@ namespace ViscaNet
             if (Type == ViscaCommandType.Cancel)
             {
                 if (socket > 0xf)
-                    throw new ArgumentOutOfRangeException(nameof(deviceId), deviceId,
-                        $"The socket '{socket}' must be between 0 and 0xf (15) for a cancel command.");
+                    throw new ArgumentOutOfRangeException(nameof(socket), socket,
+                        $"The socket '{socket}' must be between 0 and 0xf (15) for a '{Type}' command.");
                 yield return (byte)(Type + socket);
             }
             else
             {
+                if (socket > 0)
+                    throw new ArgumentOutOfRangeException(nameof(socket), socket,
+                        $"The socket '{socket}' is not valid on a '{Type}' command.");
                 yield return (byte)Type;
             }
 
@@ -171,6 +174,7 @@ namespace ViscaNet
                         }
                         return ViscaResponse.Get(type, deviceId, socket);
                     default:
+                        // Sanity-check: Can never be reached
                         logger?.LogError(
                             $"The response's length '{count + 2}' was too short for it's type '{type}'.");
                         return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);

@@ -32,23 +32,18 @@ namespace ViscaNet.Test
             }
 
             var builder = new StringBuilder();
+            var message = new byte[command.MessageSize];
             for (byte i = 0x0; i < 0x8; i++)
             {
-                var message = command.GetMessage(i);
-                var enumerator = message.GetEnumerator();
-                Assert.True(enumerator.MoveNext());
-                builder.Append("0x").Append(enumerator.Current.ToString("x2"));
-                Assert.Equal((byte)(0x80 + i), enumerator.Current);
-                Assert.True(enumerator.MoveNext());
-                builder.Append(" 0x").Append(enumerator.Current.ToString("x2"));
-                Assert.Equal(typeByte, enumerator.Current);
-                var last = enumerator.Current;
-                while (enumerator.MoveNext())
-                {
-                    last = enumerator.Current;
-                    builder.Append(" 0x").Append(enumerator.Current.ToString("x2"));
-                }
-                Assert.Equal(0xff, last);
+                command.WriteMessage(message.AsSpan(), i);
+                var b = message[0];
+                builder.Append("0x").Append(b.ToString("x2"));
+                Assert.Equal((byte)(0x80 + i), b);
+
+                b = message[1];
+                builder.Append(" 0x").Append(b.ToString("x2"));
+                Assert.Equal(typeByte, b);
+                Assert.Equal(0xff, message[^1]);
 
                 Context.Write($"{i} => ");
                 Context.WriteLine(builder.ToString());
@@ -60,7 +55,7 @@ namespace ViscaNet.Test
         [ClassData(typeof(NoResponsesTestData))]
         public void Device_id_invalid(Command command)
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => command.GetMessage(8).First());
+            Assert.Throws<ArgumentOutOfRangeException>(() => command.WriteMessage(new byte[command.MessageSize], 8));
         }
     }
 }

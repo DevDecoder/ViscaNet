@@ -9,7 +9,6 @@ using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using DynamicData.Binding;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
 using ViscaNet.Commands;
@@ -115,6 +114,8 @@ namespace ViscaNet
                         status = statusSubject.Value;
                         if (status.PowerMode == PowerMode.On)
                         {
+                            
+                            _logger.LogInformation($"Connected to '{Name}' camera.");
                             if (status.TryWith(out status, connected: true))
                                 statusSubject.OnNext(status);
 
@@ -178,6 +179,7 @@ namespace ViscaNet
                         .ConfigureAwait(false);
             } while (!cancellationToken.IsCancellationRequested);
 
+            _logger?.LogInformation($"Disconnected '{Name}' camera.");
             // Stop the channel.
             _commandChannel.Writer.TryComplete();
         }

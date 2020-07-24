@@ -6,5 +6,5 @@ using Microsoft.Extensions.Logging;
 
 namespace ViscaNet.Commands
 {
-    public delegate bool TryParseInquiryResponseDelegate<T>(byte[] payload, int offset, int count, out T result, ILogger? logger);
+    public delegate bool TryParseInquiryResponseDelegate<T>(ReadOnlySpan<byte> payload, out T result, ILogger? logger);
 }

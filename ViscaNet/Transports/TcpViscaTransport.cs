@@ -15,14 +15,14 @@ using ViscaNet.Commands;
 
 namespace ViscaNet.Transports
 {
-    public class TcpViscaTransport : IViscaTransport
+    public sealed class TcpViscaTransport : IViscaTransport
     {
         private readonly ILogger? _logger;
         private BehaviorSubject<bool>? _connectionState;
         private SemaphoreSlim? _semaphore;
         private NetworkStream? _stream;
         private TcpClient? _tcpClient;
-        private byte[] _buffer;
+        private byte[]? _buffer;
 
         public TcpViscaTransport(
             IPEndPoint endPoint,
@@ -207,10 +207,32 @@ namespace ViscaNet.Transports
                 var stream = _stream ?? throw new ObjectDisposedException(nameof(TcpViscaTransport));
                 var buffer = _buffer ?? throw new ObjectDisposedException(nameof(TcpViscaTransport));
 
-                var data = command.GetMessage(DeviceId).ToArray();
+                var messageSize = command.MessageSize;
+                var bufferLength = buffer.Length;
+                if (messageSize > bufferLength)
+                {
+                    var currentBuffer = Interlocked.CompareExchange(ref _buffer, null, buffer);
+
+                    // Already disposed
+                    if (currentBuffer is null)
+                        throw new ObjectDisposedException(nameof(TcpViscaTransport));
+
+                    // Return buffer
+                    ArrayPool<byte>.Shared.Return(buffer);
+
+                    // Get a bigger buffer!
+                    buffer = ArrayPool<byte>.Shared.Rent(messageSize);
+                    Interlocked.Exchange(ref _buffer, buffer);
+
+                    _logger.LogWarning(
+                        $"The '{command.Name} command requested a message size of '{messageSize}' which exceeded the current buffer's size '{bufferLength}', so a new buffer of size '{buffer.Length}' was created.  This is unexpected and exceeds the current VISCA specification so may cause problems on some devices!");
+                }
+
+                // Write the message into our current buffer.
+                command.WriteMessage(buffer.AsSpan(0, messageSize), DeviceId);
                 _logger?.LogDebug(
-                    $"Sending '{command.Name}' data to '{EndPoint}': {data.ToHex()}");
-                await stream.WriteAsync(data, cancellationToken)
+                    $"Sending '{command.Name}' data to '{EndPoint}': {buffer.Take(messageSize).ToHex()}");
+                await stream.WriteAsync(buffer, 0, messageSize, cancellationToken)
                     .ConfigureAwait(false);
 
                 int read;
@@ -226,7 +248,7 @@ namespace ViscaNet.Transports
                         return command.UnknownResponse;
                     }
 
-                    response = command.GetResponse(buffer, 0, read, _logger);
+                    response = command.GetResponse(buffer.AsSpan(0, read), _logger);
                     _logger?.LogDebug(
                         $"Received '{response.Type}' response to '{command.Name}' from '{EndPoint}': {buffer.Take(read).ToHex()}");
                     if (response.Type != ResponseType.ACK)
@@ -253,7 +275,7 @@ namespace ViscaNet.Transports
                     return command.UnknownResponse;
                 }
 
-                response = command.GetResponse(buffer, 0, read, _logger);
+                response = command.GetResponse(buffer.AsSpan(0, read), _logger);
                 _logger?.LogDebug(
                     $"Received '{response.Type}' response to '{command.Name}' from '{EndPoint}': {buffer.Take(read).ToHex()}");
 

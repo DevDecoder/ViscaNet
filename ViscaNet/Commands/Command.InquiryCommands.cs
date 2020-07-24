@@ -11,9 +11,9 @@ namespace ViscaNet.Commands
         public static readonly InquiryCommand<PowerMode> InquirePower = new InquiryCommand<PowerMode>(
             "Power Inquiry",
             1,
-            (byte[] payload, int offset, int count, out PowerMode result, ILogger? logger) =>
+            (ReadOnlySpan<byte> payload, out PowerMode result, ILogger? logger) =>
             {
-                var p = payload[offset];
+                var p = payload[0];
                 switch (p)
                 {
                     case 0x02:
@@ -34,12 +34,12 @@ namespace ViscaNet.Commands
         public static readonly InquiryCommand<double> InquireZoom = new InquiryCommand<double>(
             "Zoom Inquiry",
             4,
-            (byte[] payload, int offset, int count, out double result, ILogger? logger) =>
+            (ReadOnlySpan<byte> payload, out double result, ILogger? logger) =>
             {
-                var b1 = payload[offset++];
-                var b2 = payload[offset++];
-                var b3 = payload[offset++];
-                var b4 = payload[offset];
+                var b1 = payload[0];
+                var b2 = payload[1];
+                var b3 = payload[2];
+                var b4 = payload[3];
 
                 // Ensure MSBs are not set
                 if (((b1 & 0xf0) + (b2 & 0xf0) + (b3 & 0xf0) + (b4 & 0xf0)) != 0)
@@ -74,13 +74,13 @@ namespace ViscaNet.Commands
         public static readonly InquiryCommand<CameraVersion> InquireVersion = new InquiryCommand<CameraVersion>(
             "Camera Version Inquiry",
             7, 
-            (byte[] payload, int offset, int count, out CameraVersion result, ILogger? logger) =>
+            (ReadOnlySpan<byte> payload, out CameraVersion result, ILogger? logger) =>
             {
                 result = new CameraVersion(
-                    (ushort)((payload[offset++] << 8) + payload[offset++]),
-                    (ushort)((payload[offset++] << 8) + payload[offset++]),
-                    (ushort)((payload[offset++] << 8) + payload[offset++]),
-                    payload[offset]);
+                    (ushort)((payload[0] << 8) + payload[1]),
+                    (ushort)((payload[2] << 8) + payload[3]),
+                    (ushort)((payload[4] << 8) + payload[5]),
+                    payload[6]);
                 return true;
             },
             0x00, 0x02

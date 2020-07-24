@@ -72,10 +72,24 @@ namespace ViscaNet.Test
 
                 var entry = new LogEntry<TState>(logLevel, eventId, state, exception, message, _scopes.ToArray());
                 _logEntries.Enqueue(entry);
-                _context.WriteLine(message);
+                _context.WriteLine("[" + SimpleLogName(logLevel) +
+                                   (!string.IsNullOrEmpty(eventId.Name)
+                                       ? $":{Name}"
+                                       : (eventId.Id > 0 ? $":{eventId.Id}" : string.Empty)) + "] " + message);
                 if (exception != null)
                     _context.WriteLine(exception.ToString());
             }
+
+            private static string SimpleLogName(LogLevel level) => level switch
+            {
+                LogLevel.Trace => "Trc",
+                LogLevel.Debug => "Dbg",
+                LogLevel.Information => "Inf",
+                LogLevel.Warning => "Wrn",
+                LogLevel.Error => "Err",
+                LogLevel.Critical => "Crt",
+                LogLevel.None => "Non"
+            };
         }
     }
 }

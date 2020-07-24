@@ -18,14 +18,14 @@ namespace ViscaNet.Commands
             _tryParseResponseDelegate = tryParseResponseDelegate;
         }
 
-        internal virtual Response UnknownResponse => InquiryResponse<T>.Unknown;
+        internal override Response UnknownResponse => InquiryResponse<T>.Unknown;
 
-        public new InquiryResponse<T> GetResponse(byte[] response, int offset = 0, int count = -1, ILogger? logger = null)
-            => (InquiryResponse<T>)DoGetResponse(response, ref offset, ref count, logger);
+        public new InquiryResponse<T> GetResponse(ReadOnlySpan<byte> response, ILogger? logger = null)
+            => (InquiryResponse<T>)DoGetResponse(response, logger);
 
-        protected override Response DoGetResponse(byte[] response, ref int offset, ref int count, ILogger? logger)
+        protected override Response DoGetResponse(ReadOnlySpan<byte> response, ILogger? logger)
         {
-            var baseResponse = base.DoGetResponse(response, ref offset, ref count, logger);
+            var baseResponse = base.DoGetResponse(response, logger);
             var deviceId = baseResponse.DeviceId;
             var type = baseResponse.Type;
             if (type != ResponseType.Inquiry)
@@ -34,19 +34,19 @@ namespace ViscaNet.Commands
                 return InquiryResponse<T>.Get(type, deviceId, baseResponse.Socket);
             }
 
-            // Remove first two bytes, and final byte from count
-            count--;
+            // Remove first 2 bytes, and last byte
+            var payload = response.Slice(2, response.Length - 3);
 
             // Check remaining payload length
-            if (count != _payloadSize)
+            if (payload.Length != _payloadSize)
             {
                 logger?.LogError(
-                    $"The inquiry response's payload length '{count}' is invalid, should be '{_payloadSize}'.");
+                    $"The inquiry response's payload length '{payload.Length}' is invalid, should be '{_payloadSize}'.");
                 return InquiryResponse<T>.Get(ResponseType.Unknown, deviceId);
             }
 
             // Finally parse payload
-            return !_tryParseResponseDelegate(response, offset, count, out var result, logger)
+            return !_tryParseResponseDelegate(payload, out var result, logger)
                 // Trust the delegate to log any failure reasons
                 ? InquiryResponse<T>.Get(ResponseType.Unknown, deviceId)
                 : InquiryResponse<T>.Get(result, deviceId);

@@ -8,7 +8,7 @@ namespace ViscaNet.Commands
     /// <summary>
     ///     Enum ViscaResponseType indicates the type of a response from a Visca camera.
     /// </summary>
-    public enum ViscaResponseType : ushort
+    public enum ResponseType : ushort
     {
         /// <summary>
         ///     The response type could not be calculated.

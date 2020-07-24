@@ -20,7 +20,7 @@ namespace ViscaNet.Test
 
         [Theory]
         [ClassData(typeof(NoResponsesTestData))]
-        public void Device_id_valid(ViscaCommand command)
+        public void Device_id_valid(Command command)
         {
             Context.WriteLine(command.Name);
             Context.WriteLine();
@@ -58,7 +58,7 @@ namespace ViscaNet.Test
 
         [Theory]
         [ClassData(typeof(NoResponsesTestData))]
-        public void Device_id_invalid(ViscaCommand command)
+        public void Device_id_invalid(Command command)
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => command.GetMessage(8).First());
         }

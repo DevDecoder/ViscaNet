@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ViscaNet.Commands
 {
-    public partial class ViscaCommand
+    public partial class Command
     {
         public static readonly InquiryCommand<PowerMode> InquirePower = new InquiryCommand<PowerMode>(
             "Power Inquiry",

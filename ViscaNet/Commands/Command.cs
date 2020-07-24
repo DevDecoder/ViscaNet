@@ -7,25 +7,25 @@ using Microsoft.Extensions.Logging;
 
 namespace ViscaNet.Commands
 {
-    public partial class ViscaCommand
+    public partial class Command
     {
         public string Name { get; }
-        public ViscaCommandType Type { get; }
+        public CommandType Type { get; }
         private readonly byte[] _payload;
 
-        public ViscaCommand(string name, params byte[] payload)
-            : this(ViscaCommandType.Command, name, payload)
+        public Command(string name, params byte[] payload)
+            : this(CommandType.Command, name, payload)
         {
         }
 
-        protected ViscaCommand(ViscaCommandType type, string name, params byte[] payload)
+        protected Command(CommandType type, string name, params byte[] payload)
         {
             Name = name;
             Type = type;
             _payload = payload;
         }
 
-        internal virtual ViscaResponse UnknownResponse => ViscaResponse.Unknown;
+        internal virtual Response UnknownResponse => Response.Unknown;
 
         public virtual IEnumerable<byte> GetMessage(byte deviceId = 1)
         {
@@ -47,16 +47,16 @@ namespace ViscaNet.Commands
             yield return 0xFF;
         }
 
-        public ViscaResponse GetResponse(byte[] response, int offset = 0, int count = -1, ILogger? logger = null)
+        public Response GetResponse(byte[] response, int offset = 0, int count = -1, ILogger? logger = null)
         => DoGetResponse(response, ref offset, ref count, logger);
 
-        protected virtual ViscaResponse DoGetResponse(byte[] response, ref int offset, ref int count, ILogger? logger)
+        protected virtual Response DoGetResponse(byte[] response, ref int offset, ref int count, ILogger? logger)
         {
             var payloadLength = response.Length;
             if (offset > payloadLength)
             {
                 logger?.LogError($"The offset '{offset}' exceeds the response length '{payloadLength}'.");
-                return ViscaResponse.Unknown;
+                return Response.Unknown;
             }
 
             if (count < 0)
@@ -68,13 +68,13 @@ namespace ViscaNet.Commands
                 logger?.LogError(offset > 0
                     ? $"The offset '{offset}' plus count '{count}' exceeds the response length '{payloadLength}'."
                     : $"The count '{count}' exceeds the response length '{payloadLength}'.");
-                return ViscaResponse.Unknown;
+                return Response.Unknown;
             }
 
             if (count < 1)
             {
                 logger?.LogError($"The response was empty.");
-                return ViscaResponse.Unknown;
+                return Response.Unknown;
             }
 
             // Calculate Device ID
@@ -83,13 +83,13 @@ namespace ViscaNet.Commands
             if ((deviceId & 0xf) > 0)
             {
                 logger?.LogError($"The response's device byte '{deviceId:X2}' was invalid.");
-                return ViscaResponse.Unknown;
+                return Response.Unknown;
             }
             deviceId = (byte)(deviceId >> 4);
             if (deviceId < 8)
             {
                 logger?.LogError($"The response's device id '{deviceId - 8}' was invalid, as it must be greater than 0 (usually 1).");
-                return ViscaResponse.Unknown;
+                return Response.Unknown;
             }
             deviceId -= 8;
 
@@ -97,7 +97,7 @@ namespace ViscaNet.Commands
             {
                 logger?.LogError(
                     $"The response's length '{count + 1}' was too short.");
-                return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, 0);
+                return Response.Get(ResponseType.Unknown, deviceId, 0);
             }
 
             // Calculate Socket
@@ -109,27 +109,25 @@ namespace ViscaNet.Commands
             {
                 logger?.LogError(
                     $"The response's length '{count + 2}' was too short.");
-                return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                return Response.Get(ResponseType.Unknown, deviceId, socket);
             }
 
             // Calculate Response Type
-            ViscaResponseType type;
-            if (b == 0x50)
+            ResponseType type;
+            if ((b & 0xF0) == 0x50)
             {
-                // Normally we get back a 0x51 for completions, but the IFClear command uses broadcast device 0, so actually
-                // return 0x50 0xFF for completion, so we disambiguate here.
                 if (response[offset] == 0xFF)
                 {
-                    type = ViscaResponseType.Completion;
+                    type = ResponseType.Completion;
                 }
                 else
                 {
-                    type = ViscaResponseType.Inquiry;
-                    if (Type != ViscaCommandType.Inquiry)
+                    type = ResponseType.Inquiry;
+                    if (Type != CommandType.Inquiry)
                     {
                         logger?.LogError(
                             $"The '{type}' response was not expected for the '{Type}' type.");
-                        return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                        return Response.Get(ResponseType.Unknown, deviceId, socket);
                     }
                 }
             }
@@ -138,14 +136,14 @@ namespace ViscaNet.Commands
                 // look ahead
                 var t = (ushort)(((b & 0xf0) << 8) + response[offset]);
 
-                if (!Enum.IsDefined(typeof(ViscaResponseType), t))
+                if (!Enum.IsDefined(typeof(ResponseType), t))
                 {
                     logger?.LogError(
                         $"The response's type '{t:x4}' is unknown.");
-                    return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                    return Response.Get(ResponseType.Unknown, deviceId, socket);
                 }
 
-                type = (ViscaResponseType)t;
+                type = (ResponseType)t;
             }
 
             // Validate terminator
@@ -154,27 +152,27 @@ namespace ViscaNet.Commands
             {
                 logger?.LogError(
                     $"The response's last byte '{end:X2}' was not a termination '0xFF'.");
-                return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                return Response.Get(ResponseType.Unknown, deviceId, socket);
             }
 
             if (count == 1)
             {
                 switch (type)
                 {
-                    case ViscaResponseType.ACK:
-                    case ViscaResponseType.Completion:
-                        if (Type != ViscaCommandType.Command)
+                    case ResponseType.ACK:
+                    case ResponseType.Completion:
+                        if (Type != CommandType.Command)
                         {
                             logger?.LogError(
                                 $"The '{type}' response was not expected for the '{Type}' type.");
-                            return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                            return Response.Get(ResponseType.Unknown, deviceId, socket);
                         }
-                        return ViscaResponse.Get(type, deviceId, socket);
+                        return Response.Get(type, deviceId, socket);
                     default:
                         // Sanity-check: Can never be reached
                         logger?.LogError(
                             $"The response's length '{count + 2}' was too short for it's type '{type}'.");
-                        return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                        return Response.Get(ResponseType.Unknown, deviceId, socket);
                 }
             }
 
@@ -182,44 +180,44 @@ namespace ViscaNet.Commands
             {
                 switch (type)
                 {
-                    case ViscaResponseType.SyntaxError:
-                    case ViscaResponseType.BufferFull:
-                    case ViscaResponseType.Inquiry:
+                    case ResponseType.SyntaxError:
+                    case ResponseType.BufferFull:
+                    case ResponseType.Inquiry:
                         if (socket != 0)
                         {
                             logger?.LogWarning(
                                 $"The '{type}' response should not specify a socket, but specified '{socket}'.");
                         }
-                        return ViscaResponse.Get(type, deviceId, 0);
-                    case ViscaResponseType.MessageLengthError:
-                    case ViscaResponseType.NoSocket:
-                    case ViscaResponseType.NotExecutable:
-                        return ViscaResponse.Get(type, deviceId, socket);
-                    case ViscaResponseType.Canceled:
-                        if (Type != ViscaCommandType.Cancel)
+                        return Response.Get(type, deviceId, 0);
+                    case ResponseType.MessageLengthError:
+                    case ResponseType.NoSocket:
+                    case ResponseType.NotExecutable:
+                        return Response.Get(type, deviceId, socket);
+                    case ResponseType.Canceled:
+                        if (Type != CommandType.Cancel)
                         {
                             logger?.LogError(
                                 $"The '{type}' response was not expected for the '{Type}' type.");
-                            return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                            return Response.Get(ResponseType.Unknown, deviceId, socket);
                         }
-                        return ViscaResponse.Get(type, deviceId, socket);
+                        return Response.Get(type, deviceId, socket);
                     default:
                         logger?.LogError(
                             $"The response's length '{count + 2}' was invalid for it's type '{type}'.");
-                        return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                        return Response.Get(ResponseType.Unknown, deviceId, socket);
                 }
             }
 
             // Only inquiries have > 4 byte responses!
-            if (type != ViscaResponseType.Inquiry)
+            if (type != ResponseType.Inquiry)
             {
                 logger?.LogError(
                     $"The response's length '{count + 2}' was invalid for it's type '{type}'.");
-                return ViscaResponse.Get(ViscaResponseType.Unknown, deviceId, socket);
+                return Response.Get(ResponseType.Unknown, deviceId, socket);
             }
             
             // We have an inquiry response
-            return ViscaResponse.Get(ViscaResponseType.Inquiry, deviceId, socket);
+            return Response.Get(ResponseType.Inquiry, deviceId, socket);
         }
     }
 }

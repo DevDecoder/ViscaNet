@@ -8,11 +8,11 @@ using Xunit;
 
 namespace ViscaNet.Test.TestData
 {
-    public class NoResponsesTestData : TheoryData<ViscaCommand>
+    public class NoResponsesTestData : TheoryData<Command>
     {
         public NoResponsesTestData()
         {
-            foreach (ViscaCommand command in CommandTestData.Instance.Select(t=>t[0]).Distinct())
+            foreach (Command command in CommandTestData.Instance.Select(t=>t[0]).Distinct())
             {
                 Add(command);
             }

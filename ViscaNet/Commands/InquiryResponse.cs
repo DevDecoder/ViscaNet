@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ViscaNet.Commands
 {
-    public sealed class InquiryResponse<T> : ViscaResponse
+    public sealed class InquiryResponse<T> : Response
     {
         private static readonly ConcurrentDictionary<uint, InquiryResponse<T>> s_cache =
             new ConcurrentDictionary<uint, InquiryResponse<T>>();
@@ -15,7 +15,7 @@ namespace ViscaNet.Commands
         /// <summary>
         /// The response was completely unknown (could not even retrieve a device id).
         /// </summary>
-        public new static readonly InquiryResponse<T> Unknown = Get(ViscaResponseType.Unknown, 0, 0);
+        public new static readonly InquiryResponse<T> Unknown = Get(ResponseType.Unknown, 0, 0);
 
         /// <summary>
         /// Gets the response as an object.
@@ -34,16 +34,16 @@ namespace ViscaNet.Commands
         /// Returns true if this is a valid inquiry response.
         /// </summary>
         /// <value><see langword="true" /> if this instance is valid; otherwise, <see langword="false" />.</value>
-        public override bool IsValid => Type == ViscaResponseType.Inquiry;
+        public override bool IsValid => Type == ResponseType.Inquiry;
 
         /// <inheritdoc />
         private InquiryResponse(uint data, [MaybeNull] T response) : base(data) 
             => Result = response;
 
-        public new static InquiryResponse<T> Get(ViscaResponseType type, byte deviceId = 1, byte socket = 0)
+        public new static InquiryResponse<T> Get(ResponseType type, byte deviceId = 1, byte socket = 0)
             => s_cache.GetOrAdd(GetData(type, deviceId, socket), d => new InquiryResponse<T>(d, default!));
 
         public static InquiryResponse<T> Get(T result, byte deviceId = 1)
-            => new InquiryResponse<T>(GetData(ViscaResponseType.Inquiry, deviceId, 0), result);
+            => new InquiryResponse<T>(GetData(ResponseType.Inquiry, deviceId, 0), result);
     }
 }

@@ -5,7 +5,7 @@ using System;
 
 namespace ViscaNet.Commands
 {
-    public enum ViscaCommandType : byte
+    public enum CommandType : byte
     {
         Command = 0x01,
         Inquiry = 0x09,

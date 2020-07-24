@@ -34,13 +34,13 @@ namespace ViscaNet.Transports
             if (maxTimeout < 100 || maxTimeout > 86400000)
             {
                 throw new ArgumentOutOfRangeException(nameof(maxTimeout), maxTimeout,
-                    "The maximum timeout must be > 10ms and <= 1 day.");
+                    "The maximum timeout must be > 100ms and <= 1 day.");
             }
 
             if (connectionTimeout < 100)
             {
                 throw new ArgumentOutOfRangeException(nameof(connectionTimeout), connectionTimeout,
-                    "The maximum timeout must be > 10ms.");
+                    "The maximum timeout must be > 100ms.");
             }
 
             if (connectionTimeout > maxTimeout)
@@ -120,19 +120,19 @@ namespace ViscaNet.Transports
                     _stream = tcpClient.GetStream();
                     _tcpClient = tcpClient;
 
-                    _logger?.LogInformation($"Connected to {EndPoint}.");
+                    _logger?.LogInformation($"Established TCP connection to {EndPoint}.");
 
                     // Send IFClear to camera
-                    var response = await DoSendAsync(ViscaCommand.IFClear, cancellationToken)
+                    var response = await DoSendAsync(Command.IFClear, cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (response.Type != ViscaResponseType.Unknown)
+                    if (response.Type != ResponseType.Unknown)
                     {
                         // Ideally we want a Completion, but any kind of known response means there is at least a camera responding.
-                        if (response.Type != ViscaResponseType.Completion)
+                        if (response.Type != ResponseType.Completion)
                         {
                             _logger?.LogWarning(
-                                $"Received '{response.Type}' response to '{ViscaCommand.IFClear.Name}' from {EndPoint} instead of '{nameof(ViscaResponseType.Completion)}', ignoring.");
+                                $"Received '{response.Type}' response to '{Command.IFClear.Name}' from {EndPoint} instead of '{nameof(ResponseType.Completion)}', ignoring.");
                         }
 
                         // Signal connection
@@ -145,7 +145,7 @@ namespace ViscaNet.Transports
                 }
                 catch (Exception exception)
                 {
-                    _logger?.LogError(exception, $"Failed to connect to {EndPoint}.");
+                    _logger?.LogError(exception, $"Failed to establish TCP connection to {EndPoint}.");
                 }
 
                 // Ensure we dispose any connection
@@ -169,7 +169,7 @@ namespace ViscaNet.Transports
         }
 
         /// <inheritdoc />
-        public async Task<ViscaResponse> SendAsync(ViscaCommand command,
+        public async Task<Response> SendAsync(Command command,
             CancellationToken cancellationToken = default)
         {
             var semaphore = _semaphore ??
@@ -200,7 +200,7 @@ namespace ViscaNet.Transports
             }
         }
 
-        private async Task<ViscaResponse> DoSendAsync(ViscaCommand command, CancellationToken cancellationToken)
+        private async Task<Response> DoSendAsync(Command command, CancellationToken cancellationToken)
         {
             try
             {
@@ -214,9 +214,9 @@ namespace ViscaNet.Transports
                     .ConfigureAwait(false);
 
                 int read;
-                ViscaResponse response;
+                Response response;
                 int socket = -1;
-                if (command.Type == ViscaCommandType.Command)
+                if (command.Type == CommandType.Command)
                 {
                     // We expect an ACK
                     read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
@@ -229,12 +229,12 @@ namespace ViscaNet.Transports
                     response = command.GetResponse(buffer, 0, read, _logger);
                     _logger?.LogDebug(
                         $"Received '{response.Type}' response to '{command.Name}' from '{EndPoint}': {buffer.Take(read).ToHex()}");
-                    if (response.Type != ViscaResponseType.ACK)
+                    if (response.Type != ResponseType.ACK)
                     {
                         // The IFClear returns a completion without an ACK (as per spec.)
-                        if (command != ViscaCommand.IFClear && response.Type != ViscaResponseType.Completion)
+                        if (command != Command.IFClear && response.Type != ResponseType.Completion)
                             _logger?.LogWarning(
-                                $"Received a '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' instead of an '{nameof(ViscaResponseType.ACK)}' response.");
+                                $"Received a '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' instead of an '{nameof(ResponseType.ACK)}' response.");
                         return response;
                     }
 
@@ -266,7 +266,7 @@ namespace ViscaNet.Transports
                 if (socket > -1 && response.Socket != socket)
                 {
                     _logger?.LogWarning(
-                        $"The socket '{response.Socket}' in the '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' did not match the socket '{socket}' returned from the '{nameof(ViscaResponseType.ACK)}' response.");
+                        $"The socket '{response.Socket}' in the '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' did not match the socket '{socket}' returned from the '{nameof(ResponseType.ACK)}' response.");
                 }
 
                 return response;

@@ -8,7 +8,7 @@ using System.Net.Sockets;
 
 namespace ViscaNet.Commands
 {
-    public class CancelCommand : ViscaCommand
+    public class CancelCommand : Command
     {
         private static readonly ConcurrentDictionary<byte, CancelCommand> s_cache =
             new ConcurrentDictionary<byte, CancelCommand>();
@@ -16,7 +16,7 @@ namespace ViscaNet.Commands
         public byte Socket { get; }
         
         /// <inheritdoc />
-        private CancelCommand(byte socket) : base(ViscaCommandType.Cancel, $"Cancel Socket {socket}")
+        private CancelCommand(byte socket) : base(CommandType.Cancel, $"Cancel Socket {socket}")
         {
             Socket = socket;
         }

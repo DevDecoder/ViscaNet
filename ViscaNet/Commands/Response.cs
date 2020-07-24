@@ -7,19 +7,19 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ViscaNet.Commands
 {
-    public class ViscaResponse
+    public class Response
     {
-        private static readonly ConcurrentDictionary<uint, ViscaResponse> s_cache =
-            new ConcurrentDictionary<uint, ViscaResponse>();
+        private static readonly ConcurrentDictionary<uint, Response> s_cache =
+            new ConcurrentDictionary<uint, Response>();
 
         /// <summary>
         /// The response was completely unknown (could not even retrieve a device id).
         /// </summary>
-        public static readonly ViscaResponse Unknown = ViscaResponse.Get(ViscaResponseType.Unknown, 0, 0);
+        public static readonly Response Unknown = Response.Get(ResponseType.Unknown, 0, 0);
 
         private readonly uint _data;
 
-        public ViscaResponseType Type => (ViscaResponseType)(_data & 0xFFFF);
+        public ResponseType Type => (ResponseType)(_data & 0xFFFF);
         public byte DeviceId => (byte)((_data >> 16) & 0xFF);
         public byte Socket => (byte)((_data >> 24) & 0xFF);
 
@@ -35,18 +35,18 @@ namespace ViscaNet.Commands
         /// </summary>
         /// <value><see langword="true" /> if this instance is valid; otherwise, <see langword="false" />.</value>
         public virtual bool IsValid
-            => Type == ViscaResponseType.Completion ||
-               Type == ViscaResponseType.Canceled;
+            => Type == ResponseType.Completion ||
+               Type == ResponseType.Canceled;
 
-        protected ViscaResponse(uint data)
+        protected Response(uint data)
         {
             _data = data;
         }
 
-        public static ViscaResponse Get(ViscaResponseType type, byte deviceId = 1, byte socket = 1)
-            => s_cache.GetOrAdd(GetData(type, deviceId, socket), d => new ViscaResponse(d));
+        public static Response Get(ResponseType type, byte deviceId = 1, byte socket = 1)
+            => s_cache.GetOrAdd(GetData(type, deviceId, socket), d => new Response(d));
 
-        protected static uint GetData(ViscaResponseType type, byte deviceId = 1, byte socket = 1)
+        protected static uint GetData(ResponseType type, byte deviceId = 1, byte socket = 1)
         {
             if (deviceId > 7)
                 throw new ArgumentOutOfRangeException(nameof(deviceId), deviceId,

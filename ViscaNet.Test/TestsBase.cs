@@ -73,6 +73,8 @@ namespace ViscaNet.Test
                 var entry = new LogEntry<TState>(logLevel, eventId, state, exception, message, _scopes.ToArray());
                 _logEntries.Enqueue(entry);
                 _context.WriteLine(message);
+                if (exception != null)
+                    _context.WriteLine(exception.ToString());
             }
         }
     }

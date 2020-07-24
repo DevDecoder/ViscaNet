@@ -70,5 +70,20 @@ namespace ViscaNet.Commands
             },
             0x04, 0x47
         );
+
+        public static readonly InquiryCommand<CameraVersion> InquireVersion = new InquiryCommand<CameraVersion>(
+            "Camera Version Inquiry",
+            7, 
+            (byte[] payload, int offset, int count, out CameraVersion result, ILogger? logger) =>
+            {
+                result = new CameraVersion(
+                    (ushort)((payload[offset++] << 8) + payload[offset++]),
+                    (ushort)((payload[offset++] << 8) + payload[offset++]),
+                    (ushort)((payload[offset++] << 8) + payload[offset++]),
+                    payload[offset]);
+                return true;
+            },
+            0x00, 0x02
+        );
     }
 }

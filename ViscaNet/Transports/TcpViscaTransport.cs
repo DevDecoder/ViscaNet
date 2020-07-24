@@ -215,7 +215,7 @@ namespace ViscaNet.Transports
 
                 int read;
                 Response response;
-                int socket = -1;
+                var socket = -1;
                 if (command.Type == CommandType.Command)
                 {
                     // We expect an ACK
@@ -281,6 +281,10 @@ namespace ViscaNet.Transports
         /// <inheritdoc />
         public IObservable<bool> ConnectionState =>
             _connectionState ?? throw new ObjectDisposedException(nameof(CameraConnection));
+
+        /// <inheritdoc />
+        public bool IsConnected => _connectionState?.Value
+                                   ?? throw new ObjectDisposedException(nameof(CameraConnection));
 
         /// <inheritdoc />
         public void Dispose()

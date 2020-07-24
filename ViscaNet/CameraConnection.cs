@@ -4,9 +4,12 @@
 using System;
 using System.Net;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using DynamicData.Binding;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
 using ViscaNet.Commands;
@@ -19,7 +22,10 @@ namespace ViscaNet
         public uint RetryTimeout { get; }
         private readonly ILogger<CameraConnection>? _logger;
         private readonly bool _disposeTransport;
-        private readonly Channel<CommandTask> _commandChannel;
+
+        // We limit capacity as our writers will wait to write, but we allow a small queue to optimise throughput under heavy load.
+        private readonly Channel<CommandTask> _commandChannel = Channel.CreateBounded<CommandTask>(new BoundedChannelOptions(4) { SingleReader = true });
+        private BehaviorSubject<CameraStatus>? _statusSubject = new BehaviorSubject<CameraStatus>(CameraStatus.Unknown);
 
         public CameraConnection(
             IPAddress address,
@@ -58,10 +64,7 @@ namespace ViscaNet
             RetryTimeout = retryTimeout;
             _logger = logger;
 
-            // We limit capacity as our writers will wait to write, but we allow a small queue to optimise throughput under heavy load.
-            _commandChannel = Channel.CreateBounded<CommandTask>(new BoundedChannelOptions(4) { SingleReader = true });
-            _monitorCancellationTokenSource = new CancellationTokenSource();
-            Task.Run(() => MonitorCamera(_monitorCancellationTokenSource.Token), _monitorCancellationTokenSource.Token)
+            Task.Run(() => MonitorAsync(_monitorCancellationTokenSource!.Token), _monitorCancellationTokenSource!.Token)
                 .ConfigureAwait(false);
         }
 
@@ -77,64 +80,85 @@ namespace ViscaNet
                     "The retry timeout must be > 10ms.");
             }
 
-
             _transport = transport;
 
             Name = name ?? transport.ToString();
             RetryTimeout = retryTimeout;
             _logger = logger;
 
-            // We limit capacity as our writers will wait to write, but we allow a small queue to optimise throughput under heavy load.
-            _commandChannel = Channel.CreateBounded<CommandTask>(new BoundedChannelOptions(4) { SingleReader = true });
-            _monitorCancellationTokenSource = new CancellationTokenSource();
-            Task.Run(() => MonitorCamera(_monitorCancellationTokenSource.Token), _monitorCancellationTokenSource.Token)
+            Task.Run(() => MonitorAsync(_monitorCancellationTokenSource!.Token), _monitorCancellationTokenSource!.Token)
                 .ConfigureAwait(false);
         }
 
-        private async Task MonitorCamera(CancellationToken cancellationToken)
+        private async Task MonitorAsync(CancellationToken cancellationToken)
         {
             var reader = _commandChannel.Reader;
             var transport = _transport ?? throw new ObjectDisposedException(nameof(CameraConnection));
+            var statusSubject = _statusSubject ?? throw new ObjectDisposedException(nameof(CameraConnection));
             do
             {
+                CameraStatus status;
                 try
                 {
                     // Attempt connection
                     if (await transport.ConnectAsync(cancellationToken))
                     {
+                        await ExecuteAsync(transport, Command.InquireVersion, cancellationToken).ConfigureAwait(false);
+                        await ExecuteAsync(transport, Command.InquirePower, cancellationToken).ConfigureAwait(false);
 
-                        while (await reader.WaitToReadAsync(cancellationToken))
+                        if (statusSubject.Value.PowerMode != PowerMode.On)
                         {
-                            // Grab any waiting commands
-                            while (await transport.ConnectionState.FirstOrDefaultAsync() &&
-                                   reader.TryRead(out var commandTask) &&
-                                   !commandTask.CancellationToken.IsCancellationRequested &&
-                                   commandTask.TaskCompletionSource.Task.Status == TaskStatus.WaitingForActivation)
+                            // Try to turn the power on
+                            await ExecuteAsync(transport, Command.PowerOn, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        status = statusSubject.Value;
+                        if (status.PowerMode == PowerMode.On)
+                        {
+                            if (status.TryWith(out status, connected: true))
+                                statusSubject.OnNext(status);
+
+                            while (transport.IsConnected &&
+                                   await reader.WaitToReadAsync(cancellationToken))
                             {
-                                try
+                                // Grab any waiting commands
+                                while (transport.IsConnected &&
+                                       reader.TryRead(out var commandTask) &&
+                                       !commandTask.CancellationToken.IsCancellationRequested &&
+                                       commandTask.TaskCompletionSource.Task.Status == TaskStatus.WaitingForActivation)
                                 {
-                                    using var cct = commandTask.CancellationToken.CombineWith(cancellationToken);
-                                    var response = await transport.SendAsync(commandTask.Command, cct.Token)
-                                        .ConfigureAwait(false);
+                                    try
+                                    {
+                                        using var cct = commandTask.CancellationToken.CombineWith(cancellationToken);
+                                        var response = await ExecuteAsync(transport, commandTask.Command, cct.Token)
+                                            .ConfigureAwait(false);
 
-                                    // TODO Intercept interesting responses here (particularly enquiries
+                                        Intercept(commandTask.Command, response);
 
-                                    commandTask.TaskCompletionSource.TrySetResult(response);
-                                }
-                                catch (OperationCanceledException)
-                                {
-                                    commandTask.TaskCompletionSource.TrySetCanceled(commandTask.CancellationToken);
-                                }
-                                catch (Exception exception)
-                                {
-                                    commandTask.TaskCompletionSource.TrySetException(exception);
+                                        commandTask.TaskCompletionSource.TrySetResult(response);
+                                    }
+                                    catch (OperationCanceledException)
+                                    {
+                                        commandTask.TaskCompletionSource.TrySetCanceled(commandTask.CancellationToken);
+                                    }
+                                    catch (Exception exception)
+                                    {
+                                        commandTask.TaskCompletionSource.TrySetException(exception);
+                                    }
                                 }
                             }
                         }
+                        else
+                        {
+                            _logger?.LogWarning(
+                                $"Could not power up '{Name}' camera, retrying in {RetryTimeout / 1000D:F3}s.");
+                        }
                     }
-
-                    _logger?.LogWarning(
-                        $"Could not connect to '{Name}' camera, retrying in {RetryTimeout / 1000D:F3}s.");
+                    else
+                    {
+                        _logger?.LogWarning(
+                            $"Could not connect to '{Name}' camera, retrying in {RetryTimeout / 1000D:F3}s.");
+                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -146,6 +170,10 @@ namespace ViscaNet
                         $"Communication error with '{Name}' camera, retrying in {RetryTimeout / 1000D:F3}s.");
                 }
 
+                // Consider ourselves disconnected at this point.
+                if (statusSubject.Value.TryWith(out status, connected: false))
+                    statusSubject.OnNext(status);
+
                 await Task.Delay((int)RetryTimeout, cancellationToken)
                         .ConfigureAwait(false);
             } while (!cancellationToken.IsCancellationRequested);
@@ -154,14 +182,60 @@ namespace ViscaNet
             _commandChannel.Writer.TryComplete();
         }
 
+        private async Task<Response> ExecuteAsync(IViscaTransport transport, Command command, CancellationToken cancellationToken)
+        {
+            var response = await transport.SendAsync(command, cancellationToken).ConfigureAwait(false);
+            Intercept(command, response);
+            return response;
+        }
+
+        private void Intercept(Command command, Response response)
+        {
+            if (!response.IsValid) return;
+
+            var statusSubject = _statusSubject ?? throw new ObjectDisposedException(nameof(CameraConnection));
+            CameraStatus status;
+            switch (response)
+            {
+                case InquiryResponse<CameraVersion> cameraVersionResponse:
+                    if (statusSubject.Value.TryWith(out status, cameraVersionResponse.Result))
+                        statusSubject.OnNext(status);
+                    break;
+                case InquiryResponse<PowerMode> powerModeResponse:
+                    if (statusSubject.Value.TryWith(out status, powerMode: powerModeResponse.Result))
+                        statusSubject.OnNext(status);
+                    break;
+                case InquiryResponse<double> doubleResponse:
+                    if (command == Command.InquireZoom)
+                    {
+                        // TODO Update zoom
+                    }
+
+                    break;
+                default:
+                    if (command == Command.PowerOff)
+                    {
+                        if (statusSubject.Value.TryWith(out status, powerMode: PowerMode.Off))
+                            statusSubject.OnNext(status);
+
+                    }
+                    else if (command == Command.PowerOn)
+                    {
+                        if (statusSubject.Value.TryWith(out status, powerMode: PowerMode.On))
+                            statusSubject.OnNext(status);
+                    }
+
+                    break;
+            }
+        }
+
         public string Name { get; }
 
         private IViscaTransport? _transport;
-        private CancellationTokenSource? _monitorCancellationTokenSource;
-
-        public IObservable<bool> ConnectionState => (_transport ?? throw new ObjectDisposedException(nameof(CameraConnection))).ConnectionState;
-
-        public bool IsConnected => (_transport ?? throw new ObjectDisposedException(nameof(CameraConnection))).ConnectionState.FirstOrDefaultAsync().Wait();
+        private CancellationTokenSource? _monitorCancellationTokenSource = new CancellationTokenSource();
+        public bool IsConnected => _statusSubject?.Value?.Connected ?? false;
+        public IObservable<CameraStatus> Status => _statusSubject ?? throw new ObjectDisposedException(nameof(CameraConnection));
+        public CameraStatus CurrentStatus => _statusSubject?.Value ?? throw new ObjectDisposedException(nameof(CameraConnection));
 
         /// <inheritdoc />
         public void Dispose()
@@ -175,7 +249,17 @@ namespace ViscaNet
 
             if (_disposeTransport)
                 Interlocked.Exchange(ref _transport, null)?.Dispose();
+
+            var cameraStatusSubject = Interlocked.Exchange(ref _statusSubject, null);
+            if (cameraStatusSubject != null)
+            {
+                cameraStatusSubject.OnCompleted();
+                cameraStatusSubject.Dispose();
+            }
         }
+
+        public Task ConnectAsync(CancellationToken cancellationToken = default) =>
+            _statusSubject.FirstAsync(status => status.Connected).ToTask(cancellationToken);
 
         public async Task<Response> SendAsync(Command command, CancellationToken cancellationToken = default)
         {

@@ -18,17 +18,27 @@ namespace ViscaNet.Test
         public Tests(ITestOutputHelper outputHelper) : base(outputHelper)
         {
         }
-        
-        [Fact(Timeout = 5000)]
+
+        [Fact(Timeout = 5000, Skip="Manual Test")]
+        public async Task PowerOff()
+        {
+            var cts = new CancellationTokenSource(4000);
+            using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,
+                logger: GetLogger<CameraConnection>());
+            await connection.SendAsync(Command.PowerOff, cts.Token);
+        }
+
+        [Fact(Timeout = 15000)]
         public async Task TestInquiriesAsync()
         {
-            var cts = new CancellationTokenSource(10000);
+            var cts = new CancellationTokenSource(14000);
             using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,
                 logger: GetLogger<CameraConnection>());
 
-            var powerMode = await connection.SendAsync(Command.InquirePower, cts.Token)
-                .ConfigureAwait(false);
-            Context.WriteLine($"Power result: {powerMode.Result}");
+            await connection.ConnectAsync(cts.Token);
+            Assert.True(connection.IsConnected);
+            Assert.NotEqual(CameraStatus.Unknown, connection.CurrentStatus);
+            Output.WriteLine(connection.CurrentStatus.ToString());
 
             var zoom = await connection.SendAsync(Command.InquireZoom, cts.Token)
                 .ConfigureAwait(false);
@@ -56,9 +66,9 @@ namespace ViscaNet.Test
                 logger: GetLogger<CameraConnection>());
             var timestamp = Stopwatch.GetTimestamp();
             var cts = new CancellationTokenSource(msTimeout);
-            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.SendAsync(Command.Home, cts.Token));
+            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.ConnectAsync(cts.Token));
             var msDelay = (1000D * (Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency);
-            Context.WriteLine($"SendAsync returned after {msDelay:F3}ms");
+            Context.WriteLine($"ConnectAsync returned after {msDelay:F3}ms");
             Assert.True(msDelay >= msTimeout && msDelay < (msTimeout * 1.5D));
             Assert.False(connection.IsConnected);
         }

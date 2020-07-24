@@ -18,5 +18,6 @@ namespace ViscaNet.Transports
         Task<bool> ConnectAsync(CancellationToken cancellationToken = default);
         Task<Response> SendAsync(Command command, CancellationToken cancellationToken = default);
         IObservable<bool> ConnectionState { get; }
+        bool IsConnected { get; }
     }
 }

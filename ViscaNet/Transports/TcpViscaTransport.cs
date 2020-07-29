@@ -123,7 +123,7 @@ namespace ViscaNet.Transports
                     _logger?.LogInformation($"Established TCP connection to {EndPoint}.");
 
                     // Send IFClear to camera
-                    var response = await DoSendAsync(Command.IFClear, cancellationToken)
+                    var response = await DoSendAsync(ViscaCommands.IFClear, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (response.Type != ResponseType.Unknown)
@@ -132,7 +132,7 @@ namespace ViscaNet.Transports
                         if (response.Type != ResponseType.Completion)
                         {
                             _logger?.LogWarning(
-                                $"Received '{response.Type}' response to '{Command.IFClear.Name}' from {EndPoint} instead of '{nameof(ResponseType.Completion)}', ignoring.");
+                                $"Received '{response.Type}' response to '{ViscaCommands.IFClear.Name}' from {EndPoint} instead of '{nameof(ResponseType.Completion)}', ignoring.");
                         }
 
                         // Signal connection
@@ -254,7 +254,7 @@ namespace ViscaNet.Transports
                     if (response.Type != ResponseType.ACK)
                     {
                         // The IFClear returns a completion without an ACK (as per spec.)
-                        if (command != Command.IFClear && response.Type != ResponseType.Completion)
+                        if (command != ViscaCommands.IFClear && response.Type != ResponseType.Completion)
                             _logger?.LogWarning(
                                 $"Received a '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' instead of an '{nameof(ResponseType.ACK)}' response.");
                         return response;

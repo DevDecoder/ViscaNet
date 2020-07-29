@@ -25,7 +25,7 @@ namespace ViscaNet.Test
             var cts = new CancellationTokenSource(4000);
             using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,
                 logger: GetLogger<CameraConnection>());
-            await connection.SendAsync(Command.PowerOff, cts.Token);
+            await connection.SendAsync(ViscaCommands.PowerOff, cts.Token);
         }
 
         [Fact(Timeout = 15000)]
@@ -40,7 +40,7 @@ namespace ViscaNet.Test
             Assert.NotEqual(CameraStatus.Unknown, connection.CurrentStatus);
             Output.WriteLine(connection.CurrentStatus.ToString());
 
-            var zoom = await connection.SendAsync(Command.InquireZoom, cts.Token)
+            var zoom = await connection.SendAsync(InquiryCommands.Zoom, cts.Token)
                 .ConfigureAwait(false);
             Context.WriteLine($"Zoom result: {zoom.Result * 100:f2}%");
             Assert.True(connection.IsConnected);
@@ -52,7 +52,7 @@ namespace ViscaNet.Test
             using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,
                 logger: GetLogger<CameraConnection>());
             var timestamp = Stopwatch.GetTimestamp();
-            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.SendAsync(Command.Home));
+            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.SendAsync(ViscaCommands.Home));
             var delaySecs = (double)(Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency;
             Context.WriteLine($"Task cancelled after {delaySecs:F3}s");
             Assert.False(connection.IsConnected);

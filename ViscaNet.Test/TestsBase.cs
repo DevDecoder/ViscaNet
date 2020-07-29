@@ -88,7 +88,8 @@ namespace ViscaNet.Test
                 LogLevel.Warning => "Wrn",
                 LogLevel.Error => "Err",
                 LogLevel.Critical => "Crt",
-                LogLevel.None => "Non"
+                LogLevel.None => "Non",
+                _ => "???"
             };
         }
     }

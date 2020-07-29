@@ -15,7 +15,7 @@ namespace ViscaNet.Commands
         /// <summary>
         /// The response was completely unknown (could not even retrieve a device id).
         /// </summary>
-        public static readonly Response Unknown = Response.Get(ResponseType.Unknown, 0, 0);
+        public static readonly Response Unknown = Get(ResponseType.Unknown, 0, 0);
 
         private readonly uint _data;
 

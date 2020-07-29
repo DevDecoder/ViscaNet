@@ -17,26 +17,22 @@ namespace ViscaNet.Test.TestData
             s_commands =
                 new (Command, byte[]?, object?, LogLevel, string?)[]
                 {
-                    (Command.IFClear, null, null, LogLevel.None, null),
-                    (Command.Cancel(0x0), null, null, LogLevel.None, null),
-                    (Command.Cancel(), null, null, LogLevel.None, null),
-                    (Command.Cancel(0xF), null, null, LogLevel.None, null),
-                    (Command.Reset, null, null, LogLevel.None, null),
-                    (Command.Home, null, null, LogLevel.None, null),
-                    (Command.PowerOn, null, null, LogLevel.None, null),
-                    (Command.PowerOff, null, null, LogLevel.None, null),
-                    (Command.InquirePower, new byte[] {0x02}, PowerMode.On, LogLevel.None, null),
-                    (Command.InquirePower, new byte[] {0x03}, PowerMode.Off, LogLevel.None, null),
-                    (Command.InquirePower, new byte[] {0x4}, PowerMode.Unknown, LogLevel.Error,
-                        "Invalid power result '0x04' received."),
-                    (Command.InquireZoom, new byte[] {0x00, 0x00, 0x00, 0x00}, 0D, LogLevel.None, null),
-                    (Command.InquireZoom, new byte[] {0x04, 0x00, 0x00, 0x00}, 1D, LogLevel.None, null),
-                    (Command.InquireZoom, new byte[] {0x04, 0x00, 0x10, 0x00}, 0D, LogLevel.Error,
-                        "Invalid zoom data received in MSBs: 0x04 0x00 0x10 0x00."),
-                    (Command.InquireZoom, new byte[] {0x04, 0x00, 0x00, 0x01}, 1D, LogLevel.Warning,
-                        "Invalid zoom position received '0x4001' > '0x4000'."),
-                    (Command.InquireZoom, new byte[] {0x04, 0x00, 0x00, 0x01}, 1D, LogLevel.Warning,
-                        "Invalid zoom position received '0x4001' > '0x4000'.")
+                    (ViscaCommands.IFClear, null, null, LogLevel.None, null),
+                    (ViscaCommands.Cancel(0x0), null, null, LogLevel.None, null),
+                    (ViscaCommands.Cancel(), null, null, LogLevel.None, null),
+                    (ViscaCommands.Cancel(0xF), null, null, LogLevel.None, null),
+                    (ViscaCommands.Reset, null, null, LogLevel.None, null),
+                    (ViscaCommands.Home, null, null, LogLevel.None, null),
+                    (ViscaCommands.PowerOn, null, null, LogLevel.None, null),
+                    (ViscaCommands.PowerOff, null, null, LogLevel.None, null),
+                    (InquiryCommands.Power, new byte[] {0x02}, PowerMode.On, LogLevel.None, null),
+                    (InquiryCommands.Power, new byte[] {0x03}, PowerMode.Off, LogLevel.None, null),
+                    (InquiryCommands.Power, new byte[] {0x04}, PowerMode.Unknown, LogLevel.Error,
+                        "Invalid 'PowerMode' value '0x04' received."),
+                    (InquiryCommands.Zoom, new byte[] {0x00, 0x00, 0x00, 0x00}, (ushort)0, LogLevel.None, null),
+                    (InquiryCommands.Zoom, new byte[] {0x04, 0x00, 0x00, 0x00}, (ushort)0x4000, LogLevel.None, null),
+                    (InquiryCommands.Zoom, new byte[] {0x04, 0x00, 0x10, 0x00}, (ushort)0x4000, LogLevel.Warning,
+                        "Invalid data received in MSBs, discarding.")
                 };
 
         public static readonly CommandTestData Instance = new CommandTestData();

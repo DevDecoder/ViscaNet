@@ -9,6 +9,7 @@ using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using DynamicData.Binding;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
 using ViscaNet.Commands;
@@ -102,57 +103,43 @@ namespace ViscaNet
                     // Attempt connection
                     if (await transport.ConnectAsync(cancellationToken))
                     {
-                        await ExecuteAsync(transport, Command.InquireVersion, cancellationToken).ConfigureAwait(false);
-                        await ExecuteAsync(transport, Command.InquirePower, cancellationToken).ConfigureAwait(false);
-
-                        if (statusSubject.Value.PowerMode != PowerMode.On)
-                        {
-                            // Try to turn the power on
-                            await ExecuteAsync(transport, Command.PowerOn, cancellationToken).ConfigureAwait(false);
-                        }
-
+                        await ExecuteAsync(transport, InquiryCommands.Version, cancellationToken).ConfigureAwait(false);
+                        await ExecuteAsync(transport, InquiryCommands.Power, cancellationToken).ConfigureAwait(false);
+                        
                         status = statusSubject.Value;
-                        if (status.PowerMode == PowerMode.On)
+
+                        _logger.LogInformation($"Connected to '{Name}' camera.");
+                        if (status.TryWith(out status, connected: true))
+                            statusSubject.OnNext(status);
+
+                        while (transport.IsConnected &&
+                               await reader.WaitToReadAsync(cancellationToken))
                         {
-                            
-                            _logger.LogInformation($"Connected to '{Name}' camera.");
-                            if (status.TryWith(out status, connected: true))
-                                statusSubject.OnNext(status);
-
+                            // Grab any waiting commands
                             while (transport.IsConnected &&
-                                   await reader.WaitToReadAsync(cancellationToken))
+                                   reader.TryRead(out var commandTask) &&
+                                   !commandTask.CancellationToken.IsCancellationRequested &&
+                                   commandTask.TaskCompletionSource.Task.Status == TaskStatus.WaitingForActivation)
                             {
-                                // Grab any waiting commands
-                                while (transport.IsConnected &&
-                                       reader.TryRead(out var commandTask) &&
-                                       !commandTask.CancellationToken.IsCancellationRequested &&
-                                       commandTask.TaskCompletionSource.Task.Status == TaskStatus.WaitingForActivation)
+                                try
                                 {
-                                    try
-                                    {
-                                        using var cct = commandTask.CancellationToken.CombineWith(cancellationToken);
-                                        var response = await ExecuteAsync(transport, commandTask.Command, cct.Token)
-                                            .ConfigureAwait(false);
+                                    using var cct = commandTask.CancellationToken.CombineWith(cancellationToken);
+                                    var response = await ExecuteAsync(transport, commandTask.Command, cct.Token)
+                                        .ConfigureAwait(false);
 
-                                        Intercept(commandTask.Command, response);
+                                    Intercept(commandTask.Command, response);
 
-                                        commandTask.TaskCompletionSource.TrySetResult(response);
-                                    }
-                                    catch (OperationCanceledException)
-                                    {
-                                        commandTask.TaskCompletionSource.TrySetCanceled(commandTask.CancellationToken);
-                                    }
-                                    catch (Exception exception)
-                                    {
-                                        commandTask.TaskCompletionSource.TrySetException(exception);
-                                    }
+                                    commandTask.TaskCompletionSource.TrySetResult(response);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    commandTask.TaskCompletionSource.TrySetCanceled(commandTask.CancellationToken);
+                                }
+                                catch (Exception exception)
+                                {
+                                    commandTask.TaskCompletionSource.TrySetException(exception);
                                 }
                             }
-                        }
-                        else
-                        {
-                            _logger?.LogWarning(
-                                $"Could not power up '{Name}' camera, retrying in {RetryTimeout / 1000D:F3}s.");
                         }
                     }
                     else
@@ -208,20 +195,20 @@ namespace ViscaNet
                         statusSubject.OnNext(status);
                     break;
                 case InquiryResponse<double> doubleResponse:
-                    if (command == Command.InquireZoom)
+                    if (command == InquiryCommands.Zoom)
                     {
                         // TODO Update zoom
                     }
 
                     break;
                 default:
-                    if (command == Command.PowerOff)
+                    if (command == ViscaCommands.PowerOff)
                     {
                         if (statusSubject.Value.TryWith(out status, powerMode: PowerMode.Off))
                             statusSubject.OnNext(status);
 
                     }
-                    else if (command == Command.PowerOn)
+                    else if (command == ViscaCommands.PowerOn)
                     {
                         if (statusSubject.Value.TryWith(out status, powerMode: PowerMode.On))
                             statusSubject.OnNext(status);

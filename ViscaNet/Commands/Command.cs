@@ -2,7 +2,11 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Threading;
 using DynamicData.Aggregation;
 using Microsoft.Extensions.Logging;
 
@@ -10,11 +14,13 @@ namespace ViscaNet.Commands
 {
     public partial class Command
     {
+        private static readonly Dictionary<string, Command> s_commands = new Dictionary<string, Command>(StringComparer.InvariantCultureIgnoreCase);
+
         public string Name { get; }
         public CommandType Type { get; }
         private readonly byte[] _payload;
 
-        public Command(string name, params byte[] payload)
+        private Command(string name, params byte[] payload)
             : this(CommandType.Command, name, payload)
         {
         }
@@ -24,6 +30,43 @@ namespace ViscaNet.Commands
             Name = name;
             Type = type;
             _payload = payload;
+
+            var payloadStr = payload.Length > 0 ? payload.ToHex() : null;
+            lock (s_commands)
+            {
+                // Prevent duplicate names/payloads
+                if (s_commands.TryGetValue(name, out var existing))
+                    throw new ArgumentOutOfRangeException(nameof(name), name, $"Cannot register '{name}' command name already in use.");
+                if (payloadStr != null && s_commands.TryGetValue(payloadStr, out existing))
+                    throw new ArgumentOutOfRangeException(nameof(payload), payloadStr,
+                        $"Cannot register '{name}' command as payload '{payloadStr}' is a duplicate of '{existing.Name}'.");
+                s_commands.Add(name, this);
+                if (payloadStr != null)
+                    s_commands.Add(payloadStr, this);
+            }
+        }
+
+        public static Command Register(string name, params byte[] payload) => new Command(name, payload);
+
+        public static bool TryGet(string name, [MaybeNullWhen(false)] out Command command)
+        {
+            lock (s_commands)
+            {
+                return s_commands.TryGetValue(name, out command);
+            }
+        }
+
+        public static Command? Get(string name) => TryGet(name, out var command) ? command : null;
+
+        public static IReadOnlyList<Command> All
+        {
+            get
+            {
+                lock (s_commands)
+                {
+                    return s_commands.Values.ToArray();
+                }
+            }
         }
 
         internal virtual Response UnknownResponse => Response.Unknown;

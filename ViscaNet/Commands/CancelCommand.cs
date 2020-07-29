@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Net.Sockets;
 
 namespace ViscaNet.Commands
 {
@@ -13,13 +11,10 @@ namespace ViscaNet.Commands
         private static readonly ConcurrentDictionary<byte, CancelCommand> s_cache =
             new ConcurrentDictionary<byte, CancelCommand>();
 
-        public byte Socket { get; }
-
         /// <inheritdoc />
-        private CancelCommand(byte socket) : base(CommandType.Cancel, $"Cancel Socket {socket}")
-        {
-            Socket = socket;
-        }
+        private CancelCommand(byte socket) : base(CommandType.Cancel, $"Cancel Socket {socket}") => Socket = socket;
+
+        public byte Socket { get; }
 
         /// <inheritdoc />
         public override int MessageSize => 3;
@@ -28,8 +23,11 @@ namespace ViscaNet.Commands
         public override void WriteMessage(Span<byte> buffer, byte deviceId = 1)
         {
             if (deviceId > 7)
+            {
                 throw new ArgumentOutOfRangeException(nameof(deviceId), deviceId,
                     $"The device id '{deviceId}' must be between 0 and 7, usually it should be 1 for Visca over IP.");
+            }
+
             buffer[0] = (byte)(0x80 + deviceId);
             buffer[1] = (byte)(Type + Socket);
             buffer[2] = 0xFF;

@@ -8,129 +8,8 @@ namespace ViscaNet.Commands
 {
     public static class InquiryCommands
     {
-        private static bool ParseEnum<T>(byte b, out T result, ILogger? logger, bool strict = false) where T : Enum
-        {
-            result = (T)(object)b;
-            if (b != 0xFF &&
-                (!strict || Enum.IsDefined(typeof(T), result)))
-            {
-                return true;
-            }
-
-            logger?.LogError($"Invalid '{typeof(T).Name}' value '0x{b:X2}' received.");
-            b = 0xFF;
-            result = (T)(object)b;
-            return false;
-        }
-
-        private static bool UInt64FromLSBs(ReadOnlySpan<byte> payload, out ulong result, ILogger? logger)
-        {
-            var len = payload.Length;
-            if (len != 16)
-                throw new InvalidOperationException($"Payload length '{len}' must be 16 bytes to extract LSBs into a ulong.");
-            var shift = 4 * (len - 1);
-            var warned = false;
-            result = 0;
-            for (var i = 0; i < len; i++)
-            {
-                var b = payload[i];
-                if (!warned && (b & 0xf0) > 0)
-                {
-                    warned = true;
-                    logger?.LogWarning(
-                        "Invalid data received in MSBs, discarding.");
-                }
-
-                result += (ulong)((b & 0xf) << shift);
-                shift -= 4;
-            }
-            return true;
-        }
-
-        private static bool UInt32FromLSBs(ReadOnlySpan<byte> payload, out uint result, ILogger? logger)
-        {
-            var len = payload.Length;
-            if (len != 16)
-                throw new InvalidOperationException(
-                    $"Payload length '{len}' must be 8 bytes to extract LSBs into a uint.");
-            var shift = 4 * (len - 1);
-            var warned = false;
-            result = 0;
-            for (var i = 0; i < len; i++)
-            {
-                var b = payload[i];
-                if (!warned && (b & 0xf0) > 0)
-                {
-                    warned = true;
-                    logger?.LogWarning(
-                        "Invalid data received in MSBs, discarding.");
-                }
-
-                result += (uint)((b & 0xf) << shift);
-                shift -= 4;
-            }
-
-            return true;
-        }
-
-        private static bool UInt16FromLSBs(ReadOnlySpan<byte> payload, out ushort result, ILogger? logger)
-        {
-            var len = payload.Length;
-            if (len != 4)
-                throw new InvalidOperationException(
-                    $"Payload length '{len}' must be 4 bytes to extract LSBs into a ushort.");
-            var shift = 4 * (len - 1);
-            var warned = false;
-            result = 0;
-            for (var i = 0; i < len; i++)
-            {
-                var b = payload[i];
-                if (!warned && (b & 0xf0) > 0)
-                {
-                    warned = true;
-                    logger?.LogWarning(
-                        "Invalid data received in MSBs, discarding.");
-                }
-
-                result += (ushort)((b & 0xf) << shift);
-                shift -= 4;
-            }
-
-            return true;
-        }
-
-        private static bool ByteFromLSBs(ReadOnlySpan<byte> payload, out byte result, ILogger? logger)
-        {
-            var len = payload.Length;
-            if (len < 1 || len > 2)
-                throw new InvalidOperationException(
-                    $"Payload length '{len}' must be 1 or 2 bytes to extract LSBs into a byte.");
-            result = payload[0];
-            var warned = false;
-            if ((result & 0xf0) > 0)
-            {
-                logger?.LogWarning(
-                    "Invalid data received in MSBs, discarding.");
-                result &= 0xf;
-                warned = true;
-            }
-
-            if (len > 1)
-            {
-                var b = payload[1];
-                if (!warned && (b & 0xf) > 0)
-                {
-                    logger?.LogWarning(
-                        "Invalid data received in MSBs, discarding.");
-                    b &= 0xf;
-                }
-
-                result += (byte)(b << 4);
-            }
-            return true;
-        }
-
-        public static readonly InquiryCommand<CameraVersion> Version = InquiryCommand<CameraVersion>.Register("Camera Version Inquiry",
+        public static readonly InquiryCommand<CameraVersion> Version = InquiryCommand<CameraVersion>.Register(
+            "Camera Version Inquiry",
             7,
             (ReadOnlySpan<byte> payload, out CameraVersion result, ILogger? logger) =>
             {
@@ -149,29 +28,33 @@ namespace ViscaNet.Commands
                 => ParseEnum(payload[0], out result, logger, true),
             0x04, 0x00);
 
-        public static readonly InquiryCommand<byte> GainLimit = InquiryCommand<byte>.Register("Auto Gain Control Limit Inquiry",
+        public static readonly InquiryCommand<byte> GainLimit = InquiryCommand<byte>.Register(
+            "Auto Gain Control Limit Inquiry",
             1,
             (ReadOnlySpan<byte> payload, out byte result, ILogger? logger)
                 => ByteFromLSBs(payload, out result, logger),
             0x04, 0x2C);
 
-        public static readonly InquiryCommand<WhiteBalanceMode> WhiteBalanceMode = InquiryCommand<WhiteBalanceMode>.Register("White Balance Mode Inquiry",
-            1,
-            (ReadOnlySpan<byte> payload, out WhiteBalanceMode result, ILogger? logger)
-                => ParseEnum(payload[0], out result, logger),
-            0x04, 0x35);
+        public static readonly InquiryCommand<WhiteBalanceMode> WhiteBalanceMode =
+            InquiryCommand<WhiteBalanceMode>.Register("White Balance Mode Inquiry",
+                1,
+                (ReadOnlySpan<byte> payload, out WhiteBalanceMode result, ILogger? logger)
+                    => ParseEnum(payload[0], out result, logger),
+                0x04, 0x35);
 
-        public static readonly InquiryCommand<FocusMode> FocusMode = InquiryCommand<FocusMode>.Register("Focus Mode Inquiry",
+        public static readonly InquiryCommand<FocusMode> FocusMode = InquiryCommand<FocusMode>.Register(
+            "Focus Mode Inquiry",
             1,
             (ReadOnlySpan<byte> payload, out FocusMode result, ILogger? logger)
                 => ParseEnum(payload[0], out result, logger),
             0x04, 0x38);
 
-        public static readonly InquiryCommand<AutoExposureMode> AutoExposureMode = InquiryCommand<AutoExposureMode>.Register("Auto Exposure Mode Inquiry",
-            1,
-            (ReadOnlySpan<byte> payload, out AutoExposureMode result, ILogger? logger)
-                => ParseEnum(payload[0], out result, logger),
-            0x04, 0x39);
+        public static readonly InquiryCommand<AutoExposureMode> AutoExposureMode =
+            InquiryCommand<AutoExposureMode>.Register("Auto Exposure Mode Inquiry",
+                1,
+                (ReadOnlySpan<byte> payload, out AutoExposureMode result, ILogger? logger)
+                    => ParseEnum(payload[0], out result, logger),
+                0x04, 0x39);
 
         public static readonly InquiryCommand<byte> RGain = InquiryCommand<byte>.Register("Red Gain Inquiry",
             2,
@@ -214,5 +97,142 @@ namespace ViscaNet.Commands
             (ReadOnlySpan<byte> payload, out uint result, ILogger? logger)
                 => UInt32FromLSBs(payload, out result, logger),
             0x06, 0x12);
+
+        private static bool ParseEnum<T>(byte b, out T result, ILogger? logger, bool strict = false) where T : Enum
+        {
+            result = (T)(object)b;
+            if (b != 0xFF &&
+                (!strict || Enum.IsDefined(typeof(T), result)))
+            {
+                return true;
+            }
+
+            logger?.LogError($"Invalid '{typeof(T).Name}' value '0x{b:X2}' received.");
+            b = 0xFF;
+            result = (T)(object)b;
+            return false;
+        }
+
+        private static bool UInt64FromLSBs(ReadOnlySpan<byte> payload, out ulong result, ILogger? logger)
+        {
+            var len = payload.Length;
+            if (len != 16)
+            {
+                throw new InvalidOperationException(
+                    $"Payload length '{len}' must be 16 bytes to extract LSBs into a ulong.");
+            }
+
+            var shift = 4 * (len - 1);
+            var warned = false;
+            result = 0;
+            for (var i = 0; i < len; i++)
+            {
+                var b = payload[i];
+                if (!warned && (b & 0xf0) > 0)
+                {
+                    warned = true;
+                    logger?.LogWarning(
+                        "Invalid data received in MSBs, discarding.");
+                }
+
+                result += (ulong)((b & 0xf) << shift);
+                shift -= 4;
+            }
+
+            return true;
+        }
+
+        private static bool UInt32FromLSBs(ReadOnlySpan<byte> payload, out uint result, ILogger? logger)
+        {
+            var len = payload.Length;
+            if (len != 16)
+            {
+                throw new InvalidOperationException(
+                    $"Payload length '{len}' must be 8 bytes to extract LSBs into a uint.");
+            }
+
+            var shift = 4 * (len - 1);
+            var warned = false;
+            result = 0;
+            for (var i = 0; i < len; i++)
+            {
+                var b = payload[i];
+                if (!warned && (b & 0xf0) > 0)
+                {
+                    warned = true;
+                    logger?.LogWarning(
+                        "Invalid data received in MSBs, discarding.");
+                }
+
+                result += (uint)((b & 0xf) << shift);
+                shift -= 4;
+            }
+
+            return true;
+        }
+
+        private static bool UInt16FromLSBs(ReadOnlySpan<byte> payload, out ushort result, ILogger? logger)
+        {
+            var len = payload.Length;
+            if (len != 4)
+            {
+                throw new InvalidOperationException(
+                    $"Payload length '{len}' must be 4 bytes to extract LSBs into a ushort.");
+            }
+
+            var shift = 4 * (len - 1);
+            var warned = false;
+            result = 0;
+            for (var i = 0; i < len; i++)
+            {
+                var b = payload[i];
+                if (!warned && (b & 0xf0) > 0)
+                {
+                    warned = true;
+                    logger?.LogWarning(
+                        "Invalid data received in MSBs, discarding.");
+                }
+
+                result += (ushort)((b & 0xf) << shift);
+                shift -= 4;
+            }
+
+            return true;
+        }
+
+        private static bool ByteFromLSBs(ReadOnlySpan<byte> payload, out byte result, ILogger? logger)
+        {
+            var len = payload.Length;
+            if (len < 1 || len > 2)
+            {
+                throw new InvalidOperationException(
+                    $"Payload length '{len}' must be 1 or 2 bytes to extract LSBs into a byte.");
+            }
+
+            result = payload[0];
+            var warned = false;
+            if ((result & 0xf0) > 0)
+            {
+                logger?.LogWarning(
+                    "Invalid data received in MSBs, discarding.");
+                result &= 0xf;
+                warned = true;
+            }
+
+            if (len > 1)
+            {
+                var b = payload[1];
+                if (!warned && (b & 0xf) > 0)
+                {
+                    logger?.LogWarning(
+                        "Invalid data received in MSBs, discarding.");
+                    b &= 0xf;
+                }
+
+                result += (byte)(b << 4);
+            }
+
+            return true;
+        }
     }
 }

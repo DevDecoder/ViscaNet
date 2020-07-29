@@ -9,7 +9,6 @@ using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using DynamicData.Binding;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
 using ViscaNet.Commands;
@@ -19,13 +18,16 @@ namespace ViscaNet
 {
     public sealed class CameraConnection : IDisposable
     {
-        public uint RetryTimeout { get; }
-        private readonly ILogger<CameraConnection>? _logger;
-        private readonly bool _disposeTransport;
-
         // We limit capacity as our writers will wait to write, but we allow a small queue to optimise throughput under heavy load.
-        private readonly Channel<CommandTask> _commandChannel = Channel.CreateBounded<CommandTask>(new BoundedChannelOptions(4) { SingleReader = true });
+        private readonly Channel<CommandTask> _commandChannel =
+            Channel.CreateBounded<CommandTask>(new BoundedChannelOptions(4) {SingleReader = true});
+
+        private readonly bool _disposeTransport;
+        private readonly ILogger<CameraConnection>? _logger;
+        private CancellationTokenSource? _monitorCancellationTokenSource = new CancellationTokenSource();
         private BehaviorSubject<CameraStatus>? _statusSubject = new BehaviorSubject<CameraStatus>(CameraStatus.Unknown);
+
+        private IViscaTransport? _transport;
 
         public CameraConnection(
             IPAddress address,
@@ -90,6 +92,40 @@ namespace ViscaNet
                 .ConfigureAwait(false);
         }
 
+        public uint RetryTimeout { get; }
+
+        public string Name { get; }
+        public bool IsConnected => _statusSubject?.Value?.Connected ?? false;
+
+        public IObservable<CameraStatus> Status =>
+            _statusSubject ?? throw new ObjectDisposedException(nameof(CameraConnection));
+
+        public CameraStatus CurrentStatus =>
+            _statusSubject?.Value ?? throw new ObjectDisposedException(nameof(CameraConnection));
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            var cts = Interlocked.Exchange(ref _monitorCancellationTokenSource, null);
+            if (cts != null)
+            {
+                cts.Cancel();
+                cts?.Dispose();
+            }
+
+            if (_disposeTransport)
+            {
+                Interlocked.Exchange(ref _transport, null)?.Dispose();
+            }
+
+            var cameraStatusSubject = Interlocked.Exchange(ref _statusSubject, null);
+            if (cameraStatusSubject != null)
+            {
+                cameraStatusSubject.OnCompleted();
+                cameraStatusSubject.Dispose();
+            }
+        }
+
         private async Task MonitorAsync(CancellationToken cancellationToken)
         {
             var reader = _commandChannel.Reader;
@@ -105,12 +141,14 @@ namespace ViscaNet
                     {
                         await ExecuteAsync(transport, InquiryCommands.Version, cancellationToken).ConfigureAwait(false);
                         await ExecuteAsync(transport, InquiryCommands.Power, cancellationToken).ConfigureAwait(false);
-                        
+
                         status = statusSubject.Value;
 
                         _logger.LogInformation($"Connected to '{Name}' camera.");
                         if (status.TryWith(out status, connected: true))
+                        {
                             statusSubject.OnNext(status);
+                        }
 
                         while (transport.IsConnected &&
                                await reader.WaitToReadAsync(cancellationToken))
@@ -160,10 +198,12 @@ namespace ViscaNet
 
                 // Consider ourselves disconnected at this point.
                 if (statusSubject.Value.TryWith(out status, connected: false))
+                {
                     statusSubject.OnNext(status);
+                }
 
                 await Task.Delay((int)RetryTimeout, cancellationToken)
-                        .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             } while (!cancellationToken.IsCancellationRequested);
 
             _logger?.LogInformation($"Disconnected '{Name}' camera.");
@@ -171,7 +211,8 @@ namespace ViscaNet
             _commandChannel.Writer.TryComplete();
         }
 
-        private async Task<Response> ExecuteAsync(IViscaTransport transport, Command command, CancellationToken cancellationToken)
+        private async Task<Response> ExecuteAsync(IViscaTransport transport, Command command,
+            CancellationToken cancellationToken)
         {
             var response = await transport.SendAsync(command, cancellationToken).ConfigureAwait(false);
             Intercept(command, response);
@@ -180,7 +221,10 @@ namespace ViscaNet
 
         private void Intercept(Command command, Response response)
         {
-            if (!response.IsValid) return;
+            if (!response.IsValid)
+            {
+                return;
+            }
 
             var statusSubject = _statusSubject ?? throw new ObjectDisposedException(nameof(CameraConnection));
             CameraStatus status;
@@ -188,11 +232,17 @@ namespace ViscaNet
             {
                 case InquiryResponse<CameraVersion> cameraVersionResponse:
                     if (statusSubject.Value.TryWith(out status, cameraVersionResponse.Result))
+                    {
                         statusSubject.OnNext(status);
+                    }
+
                     break;
                 case InquiryResponse<PowerMode> powerModeResponse:
                     if (statusSubject.Value.TryWith(out status, powerMode: powerModeResponse.Result))
+                    {
                         statusSubject.OnNext(status);
+                    }
+
                     break;
                 case InquiryResponse<double> doubleResponse:
                     if (command == InquiryCommands.Zoom)
@@ -205,45 +255,19 @@ namespace ViscaNet
                     if (command == ViscaCommands.PowerOff)
                     {
                         if (statusSubject.Value.TryWith(out status, powerMode: PowerMode.Off))
+                        {
                             statusSubject.OnNext(status);
-
+                        }
                     }
                     else if (command == ViscaCommands.PowerOn)
                     {
                         if (statusSubject.Value.TryWith(out status, powerMode: PowerMode.On))
+                        {
                             statusSubject.OnNext(status);
+                        }
                     }
 
                     break;
-            }
-        }
-
-        public string Name { get; }
-
-        private IViscaTransport? _transport;
-        private CancellationTokenSource? _monitorCancellationTokenSource = new CancellationTokenSource();
-        public bool IsConnected => _statusSubject?.Value?.Connected ?? false;
-        public IObservable<CameraStatus> Status => _statusSubject ?? throw new ObjectDisposedException(nameof(CameraConnection));
-        public CameraStatus CurrentStatus => _statusSubject?.Value ?? throw new ObjectDisposedException(nameof(CameraConnection));
-
-        /// <inheritdoc />
-        public void Dispose()
-        {
-            var cts = Interlocked.Exchange(ref _monitorCancellationTokenSource, null);
-            if (cts != null)
-            {
-                cts.Cancel();
-                cts?.Dispose();
-            }
-
-            if (_disposeTransport)
-                Interlocked.Exchange(ref _transport, null)?.Dispose();
-
-            var cameraStatusSubject = Interlocked.Exchange(ref _statusSubject, null);
-            if (cameraStatusSubject != null)
-            {
-                cameraStatusSubject.OnCompleted();
-                cameraStatusSubject.Dispose();
             }
         }
 
@@ -269,7 +293,8 @@ namespace ViscaNet
             return command.UnknownResponse;
         }
 
-        public async Task<InquiryResponse<T>> SendAsync<T>(InquiryCommand<T> inquiry, CancellationToken cancellationToken = default)
+        public async Task<InquiryResponse<T>> SendAsync<T>(InquiryCommand<T> inquiry,
+            CancellationToken cancellationToken = default)
         {
             CommandTask? commandTask = null;
             // As we're using a bounded queue with limited capacity we can avoid the overhead
@@ -290,11 +315,12 @@ namespace ViscaNet
 
         private class CommandTask
         {
-            public readonly TaskCompletionSource<Response> TaskCompletionSource =
-                new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public readonly CancellationToken CancellationToken;
 
             public readonly Command Command;
-            public readonly CancellationToken CancellationToken;
+
+            public readonly TaskCompletionSource<Response> TaskCompletionSource =
+                new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             public CommandTask(Command command, CancellationToken cancellationToken)
             {

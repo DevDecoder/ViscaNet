@@ -2,22 +2,18 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Threading;
-using DynamicData.Aggregation;
 using Microsoft.Extensions.Logging;
 
 namespace ViscaNet.Commands
 {
-    public partial class Command
+    public class Command
     {
-        private static readonly Dictionary<string, Command> s_commands = new Dictionary<string, Command>(StringComparer.InvariantCultureIgnoreCase);
+        private static readonly Dictionary<string, Command> s_commands =
+            new Dictionary<string, Command>(StringComparer.InvariantCultureIgnoreCase);
 
-        public string Name { get; }
-        public CommandType Type { get; }
         private readonly byte[] _payload;
 
         private Command(string name, params byte[] payload)
@@ -36,27 +32,27 @@ namespace ViscaNet.Commands
             {
                 // Prevent duplicate names/payloads
                 if (s_commands.TryGetValue(name, out var existing))
-                    throw new ArgumentOutOfRangeException(nameof(name), name, $"Cannot register '{name}' command name already in use.");
+                {
+                    throw new ArgumentOutOfRangeException(nameof(name), name,
+                        $"Cannot register '{name}' command name already in use.");
+                }
+
                 if (payloadStr != null && s_commands.TryGetValue(payloadStr, out existing))
+                {
                     throw new ArgumentOutOfRangeException(nameof(payload), payloadStr,
                         $"Cannot register '{name}' command as payload '{payloadStr}' is a duplicate of '{existing.Name}'.");
+                }
+
                 s_commands.Add(name, this);
                 if (payloadStr != null)
+                {
                     s_commands.Add(payloadStr, this);
+                }
             }
         }
 
-        public static Command Register(string name, params byte[] payload) => new Command(name, payload);
-
-        public static bool TryGet(string name, [MaybeNullWhen(false)] out Command command)
-        {
-            lock (s_commands)
-            {
-                return s_commands.TryGetValue(name, out command);
-            }
-        }
-
-        public static Command? Get(string name) => TryGet(name, out var command) ? command : null;
+        public string Name { get; }
+        public CommandType Type { get; }
 
         public static IReadOnlyList<Command> All
         {
@@ -73,15 +69,30 @@ namespace ViscaNet.Commands
 
         public virtual int MessageSize => _payload.Length + 3;
 
+        public static Command Register(string name, params byte[] payload) => new Command(name, payload);
+
+        public static bool TryGet(string name, [MaybeNullWhen(false)] out Command command)
+        {
+            lock (s_commands)
+            {
+                return s_commands.TryGetValue(name, out command);
+            }
+        }
+
+        public static Command? Get(string name) => TryGet(name, out var command) ? command : null;
+
         public virtual void WriteMessage(Span<byte> buffer, byte deviceId = 1)
         {
             if (deviceId > 7)
-                throw new ArgumentOutOfRangeException(nameof(deviceId), deviceId, $"The device id '{deviceId}' must be between 0 and 7, usually it should be 1 for Visca over IP.");
+            {
+                throw new ArgumentOutOfRangeException(nameof(deviceId), deviceId,
+                    $"The device id '{deviceId}' must be between 0 and 7, usually it should be 1 for Visca over IP.");
+            }
 
             var len = _payload.Length;
-            
+
             buffer[0] = (byte)(0x80 + deviceId);
-            buffer[1]= (byte)Type;
+            buffer[1] = (byte)Type;
 
             if (len > 0)
             {
@@ -96,14 +107,14 @@ namespace ViscaNet.Commands
         }
 
         public Response GetResponse(ReadOnlySpan<byte> response, ILogger? logger = null)
-        => DoGetResponse(response, logger);
+            => DoGetResponse(response, logger);
 
         protected virtual Response DoGetResponse(ReadOnlySpan<byte> response, ILogger? logger)
         {
             var length = response.Length;
             if (length < 1)
             {
-                logger?.LogError($"The response was empty.");
+                logger?.LogError("The response was empty.");
                 return Response.Unknown;
             }
 
@@ -114,12 +125,15 @@ namespace ViscaNet.Commands
                 logger?.LogError($"The response's device byte '{deviceId:X2}' was invalid.");
                 return Response.Unknown;
             }
+
             deviceId = (byte)(deviceId >> 4);
             if (deviceId < 8)
             {
-                logger?.LogError($"The response's device id '{deviceId - 8}' was invalid, as it must be greater than 0 (usually 1).");
+                logger?.LogError(
+                    $"The response's device id '{deviceId - 8}' was invalid, as it must be greater than 0 (usually 1).");
                 return Response.Unknown;
             }
+
             deviceId -= 8;
 
             if (length < 2)

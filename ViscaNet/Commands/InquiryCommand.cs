@@ -11,6 +11,21 @@ namespace ViscaNet.Commands
 {
     public class InquiryCommand<T> : Command
     {
+        private readonly int _payloadSize;
+        private readonly TryParseInquiryResponseDelegate<T> _tryParseResponseDelegate;
+
+        protected InquiryCommand(string name, int payloadSize,
+            TryParseInquiryResponseDelegate<T> tryParseResponseDelegate, params byte[] payload)
+            : base(CommandType.Inquiry, name, payload)
+        {
+            _payloadSize = payloadSize;
+            _tryParseResponseDelegate = tryParseResponseDelegate;
+        }
+
+        public new static IReadOnlyList<InquiryCommand<T>> All => Command.All.OfType<InquiryCommand<T>>().ToArray();
+
+        internal override Response UnknownResponse => InquiryResponse<T>.Unknown;
+
         public static bool TryGet(string name, [MaybeNullWhen(false)] out InquiryCommand<T> command)
         {
             if (!Command.TryGet(name, out var c))
@@ -25,23 +40,9 @@ namespace ViscaNet.Commands
 
         public new static InquiryCommand<T>? Get(string name) => TryGet(name, out var command) ? command : null;
 
-        public new static IReadOnlyList<InquiryCommand<T>> All => Command.All.OfType<InquiryCommand<T>>().ToArray();
-
-        private readonly int _payloadSize;
-        private readonly TryParseInquiryResponseDelegate<T> _tryParseResponseDelegate;
-
-        protected InquiryCommand(string name, int payloadSize, TryParseInquiryResponseDelegate<T> tryParseResponseDelegate, params byte[] payload)
-            : base(CommandType.Inquiry, name, payload)
-        {
-            _payloadSize = payloadSize;
-            _tryParseResponseDelegate = tryParseResponseDelegate;
-        }
-
         public static InquiryCommand<T> Register(string name, int payloadSize,
             TryParseInquiryResponseDelegate<T> tryParseResponseDelegate, params byte[] payload) =>
             new InquiryCommand<T>(name, payloadSize, tryParseResponseDelegate, payload);
-
-        internal override Response UnknownResponse => InquiryResponse<T>.Unknown;
 
         public new InquiryResponse<T> GetResponse(ReadOnlySpan<byte> response, ILogger? logger = null)
             => (InquiryResponse<T>)DoGetResponse(response, logger);

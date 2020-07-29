@@ -15,27 +15,26 @@ namespace ViscaNet.Test
 {
     public abstract class TestsBase : XunitContextBase
     {
+        private readonly ConcurrentQueue<LogEntry> _logEntries = new ConcurrentQueue<LogEntry>();
+
         protected TestsBase(ITestOutputHelper outputHelper,
-            [CallerFilePath] string sourceFile = "") 
+                [CallerFilePath] string sourceFile = "")
             // ReSharper disable once ExplicitCallerInfoArgument
             : base(outputHelper, sourceFile!)
         {
         }
 
         public ILogger Logger => new ContextLogger<Unit>(Context, _logEntries);
-        public ILogger<T> GetLogger<T>() => new ContextLogger<T>(Context, _logEntries);
-
-        private readonly ConcurrentQueue<LogEntry> _logEntries = new ConcurrentQueue<LogEntry>();
         protected IReadOnlyList<LogEntry> LogEntries => _logEntries.ToArray();
         protected int LogEntryCount => _logEntries.Count;
+        public ILogger<T> GetLogger<T>() => new ContextLogger<T>(Context, _logEntries);
 
 
         private class ContextLogger<T> : ILogger<T>
         {
             private readonly Context _context;
             private readonly ConcurrentQueue<LogEntry> _logEntries;
-            public string Name => _context.Test.DisplayName;
-            private Stack<object> _scopes = new Stack<object>();
+            private readonly Stack<object> _scopes = new Stack<object>();
 
             public ContextLogger(Context context, ConcurrentQueue<LogEntry> logEntries)
             {
@@ -43,27 +42,35 @@ namespace ViscaNet.Test
                 _logEntries = logEntries;
             }
 
+            public string Name => _context.Test.DisplayName;
+
             public IDisposable BeginScope<TState>(TState state)
             {
                 if (state is null)
+                {
                     return Disposable.Empty;
+                }
 
                 _scopes.Push(state);
                 return Disposable.Create(state, s =>
                 {
                     if (!_scopes.TryPop(out var top) || !Equals(s, top))
+                    {
                         throw new InvalidOperationException("Invalid scope disposed!");
+                    }
                 });
             }
 
             public bool IsEnabled(LogLevel logLevel) => true;
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception,
+                Func<TState, Exception, string> formatter)
             {
                 if (formatter == null)
                 {
                     throw new ArgumentNullException(nameof(formatter));
                 }
+
                 var message = formatter(state, exception);
                 if (string.IsNullOrEmpty(message) && exception == null)
                 {
@@ -75,9 +82,13 @@ namespace ViscaNet.Test
                 _context.WriteLine("[" + SimpleLogName(logLevel) +
                                    (!string.IsNullOrEmpty(eventId.Name)
                                        ? $":{Name}"
-                                       : (eventId.Id > 0 ? $":{eventId.Id}" : string.Empty)) + "] " + message);
+                                       : eventId.Id > 0
+                                           ? $":{eventId.Id}"
+                                           : string.Empty) + "] " + message);
                 if (exception != null)
+                {
                     _context.WriteLine(exception.ToString());
+                }
             }
 
             private static string SimpleLogName(LogLevel level) => level switch

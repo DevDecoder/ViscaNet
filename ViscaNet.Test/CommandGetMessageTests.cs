@@ -2,9 +2,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Linq;
 using System.Text;
-using System.Windows.Forms.VisualStyles;
 using ViscaNet.Commands;
 using ViscaNet.Test.TestData;
 using Xunit;
@@ -53,9 +51,7 @@ namespace ViscaNet.Test
 
         [Theory]
         [ClassData(typeof(NoResponsesTestData))]
-        public void Device_id_invalid(Command command)
-        {
+        public void Device_id_invalid(Command command) =>
             Assert.Throws<ArgumentOutOfRangeException>(() => command.WriteMessage(new byte[command.MessageSize], 8));
-        }
     }
 }

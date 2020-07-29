@@ -2,7 +2,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Runtime.InteropServices;
 using DynamicData.Kernel;
 using ViscaNet.Commands;
 
@@ -11,6 +10,17 @@ namespace ViscaNet
     public class CameraStatus
     {
         public static readonly CameraStatus Unknown = new CameraStatus(CameraVersion.Unknown, PowerMode.Unknown, false);
+
+        private CameraStatus(CameraVersion version, PowerMode powerMode, bool connected)
+        {
+            Version = version;
+            PowerMode = powerMode;
+            Connected = connected;
+        }
+
+        public CameraVersion Version { get; }
+        public PowerMode PowerMode { get; }
+        public bool Connected { get; }
 
         public CameraStatus With(
             Optional<CameraVersion> version = default,
@@ -51,17 +61,6 @@ namespace ViscaNet
             status = changed ? new CameraStatus(v, p, b) : this;
             return changed;
         }
-
-        private CameraStatus(CameraVersion version, PowerMode powerMode, bool connected)
-        {
-            Version = version;
-            PowerMode = powerMode;
-            Connected = connected;
-        }
-
-        public CameraVersion Version { get; }
-        public PowerMode PowerMode { get; }
-        public bool Connected { get; }
 
         /// <inheritdoc />
         public override string ToString() => this == Unknown

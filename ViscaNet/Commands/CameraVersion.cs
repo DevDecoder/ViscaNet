@@ -10,7 +10,7 @@ namespace ViscaNet.Commands
         public static readonly CameraVersion Unknown = default;
 
         private readonly ulong _version;
-        
+
         public CameraVersion(ushort vendor, ushort model, ushort romVersion, byte socketNumber) =>
             _version = ((ulong)vendor << 40) +
                        ((ulong)model << 24) +

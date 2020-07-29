@@ -9,12 +9,6 @@ namespace ViscaNet.Test
 {
     public class LogEntry
     {
-        public LogLevel LogLevel { get; }
-        public EventId EventId { get; }
-        public Exception? Exception { get; }
-        public string Message { get; }
-        public IReadOnlyList<object> Scope { get; }
-
         public LogEntry(LogLevel logLevel, EventId eventId, Exception? exception, string message,
             IReadOnlyList<object>? scope)
         {
@@ -24,17 +18,21 @@ namespace ViscaNet.Test
             Message = message;
             Scope = scope ?? Array.Empty<object>();
         }
+
+        public LogLevel LogLevel { get; }
+        public EventId EventId { get; }
+        public Exception? Exception { get; }
+        public string Message { get; }
+        public IReadOnlyList<object> Scope { get; }
     }
 
     public class LogEntry<TState> : LogEntry
     {
-        public TState State { get; }
-
         internal LogEntry(LogLevel logLevel, EventId eventId, TState state, Exception exception, string message,
             IReadOnlyList<object> scope)
-            : base(logLevel, eventId, exception, message, scope)
-        {
+            : base(logLevel, eventId, exception, message, scope) =>
             State = state;
-        }
+
+        public TState State { get; }
     }
 }

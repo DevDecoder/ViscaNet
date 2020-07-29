@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Licensed under the Apache License, Version 2.0 (the "License").
+// See the LICENSE file in the project root for more information.
+
+using System;
 
 namespace ViscaNet.Commands
 {
@@ -6,7 +9,7 @@ namespace ViscaNet.Commands
     {
         On = 0x02,
         Standby = 0x03,
-        Off=Standby,
+        Off = Standby,
         Unknown = 0xFF,
     }
 }

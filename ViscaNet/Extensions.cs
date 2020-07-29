@@ -11,8 +11,11 @@ namespace ViscaNet
     {
         public static string ToHex(this IEnumerable<byte> bytes, string format = "X2")
         {
-            if (bytes is null) return "null";
-            
+            if (bytes is null)
+            {
+                return "null";
+            }
+
             StringBuilder builder = new StringBuilder();
             var first = true;
             foreach (var b in bytes)

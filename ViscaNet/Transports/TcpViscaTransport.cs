@@ -18,11 +18,11 @@ namespace ViscaNet.Transports
     public sealed class TcpViscaTransport : IViscaTransport
     {
         private readonly ILogger? _logger;
+        private byte[]? _buffer;
         private BehaviorSubject<bool>? _connectionState;
         private SemaphoreSlim? _semaphore;
         private NetworkStream? _stream;
         private TcpClient? _tcpClient;
-        private byte[]? _buffer;
 
         public TcpViscaTransport(
             IPEndPoint endPoint,
@@ -89,7 +89,7 @@ namespace ViscaNet.Transports
                 try
                 {
                     if (tcpClient != null && stream != null && tcpClient.Connected)
-                    // Already connected!
+                        // Already connected!
                     {
                         return true;
                     }
@@ -104,7 +104,7 @@ namespace ViscaNet.Transports
 
                     Interlocked.Exchange(ref _tcpClient, null)?.Dispose();
 
-                    tcpClient = new TcpClient { ReceiveTimeout = (int)MaxTimeout, SendTimeout = (int)MaxTimeout };
+                    tcpClient = new TcpClient {ReceiveTimeout = (int)MaxTimeout, SendTimeout = (int)MaxTimeout};
 
                     // Try to connect, respecting Connection Timeout
                     await tcpClient.ConnectAsync(EndPoint.Address, EndPoint.Port)
@@ -141,7 +141,6 @@ namespace ViscaNet.Transports
                     }
 
                     _logger?.LogError($"No valid response from {EndPoint}.");
-
                 }
                 catch (Exception exception)
                 {
@@ -160,6 +159,7 @@ namespace ViscaNet.Transports
                     Interlocked.CompareExchange(ref _tcpClient, null, tcpClient);
                     tcpClient.Dispose();
                 }
+
                 return false;
             }
             finally
@@ -184,7 +184,8 @@ namespace ViscaNet.Transports
             if ((_tcpClient is null || _stream is null || !_tcpClient.Connected) &&
                 !await ConnectAsync(cancellationToken))
             {
-                _logger.LogError($"Could not send '{command.Name}' command to '{EndPoint}', as a connection could not be established.");
+                _logger.LogError(
+                    $"Could not send '{command.Name}' command to '{EndPoint}', as a connection could not be established.");
                 return command.UnknownResponse;
             }
 
@@ -197,106 +198,6 @@ namespace ViscaNet.Transports
             finally
             {
                 semaphore.Release();
-            }
-        }
-
-        private async Task<Response> DoSendAsync(Command command, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var stream = _stream ?? throw new ObjectDisposedException(nameof(TcpViscaTransport));
-                var buffer = _buffer ?? throw new ObjectDisposedException(nameof(TcpViscaTransport));
-
-                var messageSize = command.MessageSize;
-                var bufferLength = buffer.Length;
-                if (messageSize > bufferLength)
-                {
-                    var currentBuffer = Interlocked.CompareExchange(ref _buffer, null, buffer);
-
-                    // Already disposed
-                    if (currentBuffer is null)
-                        throw new ObjectDisposedException(nameof(TcpViscaTransport));
-
-                    // Return buffer
-                    ArrayPool<byte>.Shared.Return(buffer);
-
-                    // Get a bigger buffer!
-                    buffer = ArrayPool<byte>.Shared.Rent(messageSize);
-                    Interlocked.Exchange(ref _buffer, buffer);
-
-                    _logger.LogWarning(
-                        $"The '{command.Name} command requested a message size of '{messageSize}' which exceeded the current buffer's size '{bufferLength}', so a new buffer of size '{buffer.Length}' was created.  This is unexpected and exceeds the current VISCA specification so may cause problems on some devices!");
-                }
-
-                // Write the message into our current buffer.
-                command.WriteMessage(buffer.AsSpan(0, messageSize), DeviceId);
-                _logger?.LogDebug(
-                    $"Sending '{command.Name}' data to '{EndPoint}': {buffer.Take(messageSize).ToHex()}");
-                await stream.WriteAsync(buffer, 0, messageSize, cancellationToken)
-                    .ConfigureAwait(false);
-
-                int read;
-                Response response;
-                var socket = -1;
-                if (command.Type == CommandType.Command)
-                {
-                    // We expect an ACK
-                    read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                    if (read < 1)
-                    {
-                        _logger?.LogError($"No data returned from '{EndPoint}' whilst executing '{command.Name}'.");
-                        return command.UnknownResponse;
-                    }
-
-                    response = command.GetResponse(buffer.AsSpan(0, read), _logger);
-                    _logger?.LogDebug(
-                        $"Received '{response.Type}' response to '{command.Name}' from '{EndPoint}': {buffer.Take(read).ToHex()}");
-                    if (response.Type != ResponseType.ACK)
-                    {
-                        // The IFClear returns a completion without an ACK (as per spec.)
-                        if (command != ViscaCommands.IFClear && response.Type != ResponseType.Completion)
-                            _logger?.LogWarning(
-                                $"Received a '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' instead of an '{nameof(ResponseType.ACK)}' response.");
-                        return response;
-                    }
-
-                    if (response.DeviceId != DeviceId)
-                    {
-                    }
-
-                    socket = response.Socket;
-                    // Continue to wait for completion response
-                }
-
-                read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                if (read < 1)
-                {
-                    _logger?.LogError($"No data returned from '{EndPoint}' whilst executing '{command.Name}'.");
-                    return command.UnknownResponse;
-                }
-
-                response = command.GetResponse(buffer.AsSpan(0, read), _logger);
-                _logger?.LogDebug(
-                    $"Received '{response.Type}' response to '{command.Name}' from '{EndPoint}': {buffer.Take(read).ToHex()}");
-
-                if (response.DeviceId != DeviceId)
-                {
-                    _logger?.LogWarning(
-                        $"The device Id '{response.DeviceId}' in the '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' did not match the expected device Id '{DeviceId}'.");
-                }
-
-                if (socket > -1 && response.Socket != socket)
-                {
-                    _logger?.LogWarning(
-                        $"The socket '{response.Socket}' in the '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' did not match the socket '{socket}' returned from the '{nameof(ResponseType.ACK)}' response.");
-                }
-
-                return response;
-            }
-            catch (Exception exception)
-            {
-                _logger?.LogError(exception, $"Failed to send '{command.Name}' to '{EndPoint}'.");
-                return command.UnknownResponse;
             }
         }
 
@@ -342,6 +243,111 @@ namespace ViscaNet.Transports
 
             connectionState.OnCompleted();
             connectionState.Dispose();
+        }
+
+        private async Task<Response> DoSendAsync(Command command, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var stream = _stream ?? throw new ObjectDisposedException(nameof(TcpViscaTransport));
+                var buffer = _buffer ?? throw new ObjectDisposedException(nameof(TcpViscaTransport));
+
+                var messageSize = command.MessageSize;
+                var bufferLength = buffer.Length;
+                if (messageSize > bufferLength)
+                {
+                    var currentBuffer = Interlocked.CompareExchange(ref _buffer, null, buffer);
+
+                    // Already disposed
+                    if (currentBuffer is null)
+                    {
+                        throw new ObjectDisposedException(nameof(TcpViscaTransport));
+                    }
+
+                    // Return buffer
+                    ArrayPool<byte>.Shared.Return(buffer);
+
+                    // Get a bigger buffer!
+                    buffer = ArrayPool<byte>.Shared.Rent(messageSize);
+                    Interlocked.Exchange(ref _buffer, buffer);
+
+                    _logger.LogWarning(
+                        $"The '{command.Name} command requested a message size of '{messageSize}' which exceeded the current buffer's size '{bufferLength}', so a new buffer of size '{buffer.Length}' was created.  This is unexpected and exceeds the current VISCA specification so may cause problems on some devices!");
+                }
+
+                // Write the message into our current buffer.
+                command.WriteMessage(buffer.AsSpan(0, messageSize), DeviceId);
+                _logger?.LogDebug(
+                    $"Sending '{command.Name}' data to '{EndPoint}': {buffer.Take(messageSize).ToHex()}");
+                await stream.WriteAsync(buffer, 0, messageSize, cancellationToken)
+                    .ConfigureAwait(false);
+
+                int read;
+                Response response;
+                var socket = -1;
+                if (command.Type == CommandType.Command)
+                {
+                    // We expect an ACK
+                    read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                    if (read < 1)
+                    {
+                        _logger?.LogError($"No data returned from '{EndPoint}' whilst executing '{command.Name}'.");
+                        return command.UnknownResponse;
+                    }
+
+                    response = command.GetResponse(buffer.AsSpan(0, read), _logger);
+                    _logger?.LogDebug(
+                        $"Received '{response.Type}' response to '{command.Name}' from '{EndPoint}': {buffer.Take(read).ToHex()}");
+                    if (response.Type != ResponseType.ACK)
+                    {
+                        // The IFClear returns a completion without an ACK (as per spec.)
+                        if (command != ViscaCommands.IFClear && response.Type != ResponseType.Completion)
+                        {
+                            _logger?.LogWarning(
+                                $"Received a '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' instead of an '{nameof(ResponseType.ACK)}' response.");
+                        }
+
+                        return response;
+                    }
+
+                    if (response.DeviceId != DeviceId)
+                    {
+                    }
+
+                    socket = response.Socket;
+                    // Continue to wait for completion response
+                }
+
+                read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                if (read < 1)
+                {
+                    _logger?.LogError($"No data returned from '{EndPoint}' whilst executing '{command.Name}'.");
+                    return command.UnknownResponse;
+                }
+
+                response = command.GetResponse(buffer.AsSpan(0, read), _logger);
+                _logger?.LogDebug(
+                    $"Received '{response.Type}' response to '{command.Name}' from '{EndPoint}': {buffer.Take(read).ToHex()}");
+
+                if (response.DeviceId != DeviceId)
+                {
+                    _logger?.LogWarning(
+                        $"The device Id '{response.DeviceId}' in the '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' did not match the expected device Id '{DeviceId}'.");
+                }
+
+                if (socket > -1 && response.Socket != socket)
+                {
+                    _logger?.LogWarning(
+                        $"The socket '{response.Socket}' in the '{response.Type}' response from '{EndPoint}' whilst executing '{command.Name}' did not match the socket '{socket}' returned from the '{nameof(ResponseType.ACK)}' response.");
+                }
+
+                return response;
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogError(exception, $"Failed to send '{command.Name}' to '{EndPoint}'.");
+                return command.UnknownResponse;
+            }
         }
 
         /// <inheritdoc />

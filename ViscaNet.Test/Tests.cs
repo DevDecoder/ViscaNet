@@ -7,7 +7,6 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using ViscaNet.Commands;
-using ViscaNet.Transports;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -19,7 +18,22 @@ namespace ViscaNet.Test
         {
         }
 
-        [Fact(Timeout = 5000, Skip="Manual Test")]
+        [Fact(Timeout = 2000)]
+        public async Task Invalid_connection_explicit_timeout_Async()
+        {
+            const int msTimeout = 100;
+            using var connection = new CameraConnection(IPAddress.Parse("127.0.0.1"), 65000,
+                logger: GetLogger<CameraConnection>());
+            var timestamp = Stopwatch.GetTimestamp();
+            var cts = new CancellationTokenSource(msTimeout);
+            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.ConnectAsync(cts.Token));
+            var msDelay = (1000D * (Stopwatch.GetTimestamp() - timestamp)) / Stopwatch.Frequency;
+            Context.WriteLine($"ConnectAsync returned after {msDelay:F3}ms");
+            Assert.True(msDelay >= msTimeout && msDelay < (msTimeout * 1.5D));
+            Assert.False(connection.IsConnected);
+        }
+
+        [Fact(Timeout = 5000, Skip = "Manual Test")]
         public async Task PowerOff()
         {
             var cts = new CancellationTokenSource(4000);
@@ -46,7 +60,7 @@ namespace ViscaNet.Test
             Assert.True(connection.IsConnected);
         }
 
-        [Fact(Skip="Long Running", Timeout = 22000)]
+        [Fact(Skip = "Long Running", Timeout = 22000)]
         public async Task TestInvalidConnectionDefaultTimeoutAsync()
         {
             using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,
@@ -55,21 +69,6 @@ namespace ViscaNet.Test
             await Assert.ThrowsAsync<TaskCanceledException>(() => connection.SendAsync(ViscaCommands.Home));
             var delaySecs = (double)(Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency;
             Context.WriteLine($"Task cancelled after {delaySecs:F3}s");
-            Assert.False(connection.IsConnected);
-        }
-
-        [Fact(Timeout = 2000)]
-        public async Task Invalid_connection_explicit_timeout_Async()
-        {
-            const int msTimeout = 100;
-            using var connection = new CameraConnection(IPAddress.Parse("127.0.0.1"), 65000,
-                logger: GetLogger<CameraConnection>());
-            var timestamp = Stopwatch.GetTimestamp();
-            var cts = new CancellationTokenSource(msTimeout);
-            await Assert.ThrowsAsync<TaskCanceledException>(() => connection.ConnectAsync(cts.Token));
-            var msDelay = (1000D * (Stopwatch.GetTimestamp() - timestamp) / Stopwatch.Frequency);
-            Context.WriteLine($"ConnectAsync returned after {msDelay:F3}ms");
-            Assert.True(msDelay >= msTimeout && msDelay < (msTimeout * 1.5D));
             Assert.False(connection.IsConnected);
         }
     }

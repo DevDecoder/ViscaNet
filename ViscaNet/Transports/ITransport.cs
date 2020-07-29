@@ -15,9 +15,9 @@ namespace ViscaNet.Transports
 
     public interface IViscaTransport : IDisposable
     {
-        Task<bool> ConnectAsync(CancellationToken cancellationToken = default);
-        Task<Response> SendAsync(Command command, CancellationToken cancellationToken = default);
         IObservable<bool> ConnectionState { get; }
         bool IsConnected { get; }
+        Task<bool> ConnectAsync(CancellationToken cancellationToken = default);
+        Task<Response> SendAsync(Command command, CancellationToken cancellationToken = default);
     }
 }

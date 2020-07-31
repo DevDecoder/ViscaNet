@@ -3,22 +3,44 @@
 
 using System;
 using System.Net;
+using System.Threading;
 using Microsoft.Extensions.Logging;
+using ViscaNet.Transports;
 
 namespace ViscaNet
 {
-    public class Camera
+    public class Camera : IDisposable
     {
+        public string? Name { get; }
         private readonly ILogger<Camera>? _logger;
+        private CameraConnection? _connection;
 
-        public Camera(IPAddress ipAddress, int port, string name, ILogger<Camera>? logger = null)
+        public Camera(IPAddress ipAddress, int port, string? name = null, ILoggerFactory? factory = null)
+            : this(new IPEndPoint(ipAddress, port), name, factory)
         {
-            EndPoint = new IPEndPoint(ipAddress, port);
+        }
+
+        public Camera(IPEndPoint endPoint, string? name = null, ILoggerFactory? factory = null)
+        {
+            EndPoint = endPoint;
             Name = name;
-            _logger = logger;
+            _logger = factory?.CreateLogger<Camera>();
+            _connection = new CameraConnection(new TcpViscaTransport(endPoint), Name,
+                logger: factory?.CreateLogger<CameraConnection>());
         }
 
         public IPEndPoint EndPoint { get; }
-        public string Name { get; set; }
+
+        public IObservable<CameraStatus> Status =>
+            _connection?.Status ?? throw new ObjectDisposedException(nameof(CameraConnection));
+
+        public CameraStatus CurrentStatus =>
+            _connection?.CurrentStatus ?? throw new ObjectDisposedException(nameof(CameraConnection));
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _connection, null)?.Dispose();
+        }
     }
 }

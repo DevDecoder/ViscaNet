@@ -144,7 +144,7 @@ namespace ViscaNet
 
                         status = statusSubject.Value;
 
-                        _logger.LogInformation($"Connected to '{Name}' camera.");
+                        _logger?.LogInformation($"Connected to '{Name}' camera.");
                         if (status.TryWith(out status, connected: true))
                         {
                             statusSubject.OnNext(status);

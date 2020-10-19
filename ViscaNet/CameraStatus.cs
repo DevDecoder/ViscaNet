@@ -2,6 +2,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using DynamicData;
 using DynamicData.Kernel;
 using ViscaNet.Commands;
 
@@ -9,23 +10,23 @@ namespace ViscaNet
 {
     public class CameraStatus
     {
-        public static readonly CameraStatus Unknown = new CameraStatus(CameraVersion.Unknown, PowerMode.Unknown, false);
+        public static readonly CameraStatus Unknown = new CameraStatus(CameraVersion.Unknown, PowerMode.Unknown, ConnectionState.Unknown);
 
-        private CameraStatus(CameraVersion version, PowerMode powerMode, bool connected)
+        private CameraStatus(CameraVersion version, PowerMode powerMode, ConnectionState connection)
         {
             Version = version;
             PowerMode = powerMode;
-            Connected = connected;
+            Connection = connection;
         }
 
         public CameraVersion Version { get; }
         public PowerMode PowerMode { get; }
-        public bool Connected { get; }
+        public ConnectionState Connection { get; }
 
         public CameraStatus With(
             Optional<CameraVersion> version = default,
             Optional<PowerMode> powerMode = default,
-            Optional<bool> connected = default) =>
+            Optional<ConnectionState> connected = default) =>
             TryWith(out var status, version, powerMode, connected)
                 ? status
                 : this;
@@ -34,7 +35,7 @@ namespace ViscaNet
             out CameraStatus status,
             Optional<CameraVersion> version = default,
             Optional<PowerMode> powerMode = default,
-            Optional<bool> connected = default)
+            Optional<ConnectionState> connected = default)
         {
             var changed = false;
             var v = Version;
@@ -51,20 +52,28 @@ namespace ViscaNet
                 changed = true;
             }
 
-            var b = Connected;
+            var b = Connection;
             if (connected.HasValue && connected.Value != b)
             {
                 b = connected.Value;
                 changed = true;
             }
 
-            status = changed ? new CameraStatus(v, p, b) : this;
-            return changed;
+            if (!changed)
+            {
+                status = this;
+                return false;
+            }
+
+            status = v != CameraVersion.Unknown || p!= PowerMode.Unknown || b != ConnectionState.Unknown
+                ? new CameraStatus(v, p, b)
+                : Unknown;
+            return true;
         }
 
         /// <inheritdoc />
         public override string ToString() => this == Unknown
             ? "Unknown"
-            : $"Version: {Version}; Power: {PowerMode}; Connect: {Connected}";
+            : $"Version: {Version}; Power: {PowerMode}; Connect: {Connection}";
     }
 }

@@ -95,7 +95,7 @@ namespace ViscaNet
         public uint RetryTimeout { get; }
 
         public string Name { get; }
-        public bool IsConnected => _statusSubject?.Value?.Connected ?? false;
+        public bool IsConnected => _statusSubject?.Value?.Connection == ConnectionState.Connected;
 
         public IObservable<CameraStatus> Status =>
             _statusSubject ?? throw new ObjectDisposedException(nameof(CameraConnection));
@@ -145,7 +145,7 @@ namespace ViscaNet
                         status = statusSubject.Value;
 
                         _logger?.LogInformation($"Connected to '{Name}' camera.");
-                        if (status.TryWith(out status, connected: true))
+                        if (status.TryWith(out status, connected: ConnectionState.Connected))
                         {
                             statusSubject.OnNext(status);
                         }
@@ -197,7 +197,7 @@ namespace ViscaNet
                 }
 
                 // Consider ourselves disconnected at this point.
-                if (statusSubject.Value.TryWith(out status, connected: false))
+                if (statusSubject.Value.TryWith(out status, connected: ConnectionState.Disconnected))
                 {
                     statusSubject.OnNext(status);
                 }
@@ -272,7 +272,7 @@ namespace ViscaNet
         }
 
         public Task ConnectAsync(CancellationToken cancellationToken = default) =>
-            _statusSubject.FirstAsync(status => status.Connected).ToTask(cancellationToken);
+            _statusSubject.FirstAsync(status => status.Connection == ConnectionState.Connected).ToTask(cancellationToken);
 
         public async Task<Response> SendAsync(Command command, CancellationToken cancellationToken = default)
         {

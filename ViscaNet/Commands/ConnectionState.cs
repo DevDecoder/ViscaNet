@@ -3,7 +3,7 @@
 
 using System;
 
-namespace ViscaNet.Commands
+namespace DevDecoder.ViscaNet.Commands
 {
     public enum ConnectionState
     {

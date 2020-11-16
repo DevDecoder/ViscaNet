@@ -2,11 +2,10 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using DynamicData;
+using DevDecoder.ViscaNet.Commands;
 using DynamicData.Kernel;
-using ViscaNet.Commands;
 
-namespace ViscaNet
+namespace DevDecoder.ViscaNet
 {
     public class CameraStatus
     {

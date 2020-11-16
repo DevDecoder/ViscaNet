@@ -6,11 +6,11 @@ using System.Diagnostics;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using ViscaNet.Commands;
+using DevDecoder.ViscaNet.Commands;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ViscaNet.Test
+namespace DevDecoder.ViscaNet.Test
 {
     public sealed class Tests : TestsBase
     {
@@ -34,7 +34,7 @@ namespace ViscaNet.Test
         }
 
         [Fact(Timeout = 5000, Skip = "Manual Test")]
-        public async Task PowerOff()
+        public async Task PowerOffAsync()
         {
             var cts = new CancellationTokenSource(4000);
             using var connection = new CameraConnection(IPAddress.Parse("192.168.1.201"), 1259,

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
-namespace ViscaNet.Commands
+namespace DevDecoder.ViscaNet.Commands
 {
     public class Response
     {

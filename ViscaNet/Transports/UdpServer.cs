@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
 
-namespace ViscaNet.Transports
+namespace DevDecoder.ViscaNet.Transports
 {
     // TODO
     internal class UdpServer : IDisposable

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
-namespace ViscaNet.Test
+namespace DevDecoder.ViscaNet.Test
 {
     public class LogEntry
     {

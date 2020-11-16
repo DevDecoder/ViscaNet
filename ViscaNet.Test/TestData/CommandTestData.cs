@@ -4,11 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using DevDecoder.ViscaNet.Commands;
 using Microsoft.Extensions.Logging;
-using ViscaNet.Commands;
 using Xunit;
 
-namespace ViscaNet.Test.TestData
+namespace DevDecoder.ViscaNet.Test.TestData
 {
     public class CommandTestData : TheoryData<Command, byte[], object?, LogLevel, string?>
     {

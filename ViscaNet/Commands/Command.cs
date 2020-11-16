@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace ViscaNet.Commands
+namespace DevDecoder.ViscaNet.Commands
 {
     public class Command
     {

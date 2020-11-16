@@ -4,10 +4,10 @@
 using System;
 using System.Net;
 using System.Threading;
+using DevDecoder.ViscaNet.Transports;
 using Microsoft.Extensions.Logging;
-using ViscaNet.Transports;
 
-namespace ViscaNet
+namespace DevDecoder.ViscaNet
 {
     public class Camera : IDisposable
     {

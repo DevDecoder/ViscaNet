@@ -4,9 +4,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using ViscaNet.Commands;
+using DevDecoder.ViscaNet.Commands;
 
-namespace ViscaNet.Transports
+namespace DevDecoder.ViscaNet.Transports
 {
     public interface IViscaTransportFactory
     {

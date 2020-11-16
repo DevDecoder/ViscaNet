@@ -3,13 +3,13 @@
 
 using System;
 using System.Linq;
+using DevDecoder.ViscaNet.Commands;
+using DevDecoder.ViscaNet.Test.TestData;
 using Microsoft.Extensions.Logging;
-using ViscaNet.Commands;
-using ViscaNet.Test.TestData;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ViscaNet.Test
+namespace DevDecoder.ViscaNet.Test
 {
     public sealed class CommandGetResponseTests : TestsBase
     {

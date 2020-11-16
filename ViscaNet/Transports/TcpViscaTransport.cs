@@ -9,11 +9,11 @@ using System.Net.Sockets;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
+using DevDecoder.ViscaNet.Commands;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
-using ViscaNet.Commands;
 
-namespace ViscaNet.Transports
+namespace DevDecoder.ViscaNet.Transports
 {
     public sealed class TcpViscaTransport : IViscaTransport
     {
@@ -256,7 +256,7 @@ namespace ViscaNet.Transports
                 var bufferLength = buffer.Length;
                 if (messageSize > bufferLength)
                 {
-                    var currentBuffer = Interlocked.CompareExchange(ref _buffer, null, buffer);
+                    var currentBuffer = Interlocked.CompareExchange(ref _buffer, null!, buffer);
 
                     // Already disposed
                     if (currentBuffer is null)

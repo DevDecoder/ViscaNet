@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Extensions.Logging;
 
-namespace ViscaNet.Commands
+namespace DevDecoder.ViscaNet.Commands
 {
     public static class InquiryCommands
     {

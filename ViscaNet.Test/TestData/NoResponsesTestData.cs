@@ -3,10 +3,10 @@
 
 using System;
 using System.Linq;
-using ViscaNet.Commands;
+using DevDecoder.ViscaNet.Commands;
 using Xunit;
 
-namespace ViscaNet.Test.TestData
+namespace DevDecoder.ViscaNet.Test.TestData
 {
     public class NoResponsesTestData : TheoryData<Command>
     {

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ViscaNet
+namespace DevDecoder.ViscaNet
 {
     public static class Extensions
     {

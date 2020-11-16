@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ViscaNet.Test
+namespace DevDecoder.ViscaNet.Test
 {
     public abstract class TestsBase : XunitContextBase
     {

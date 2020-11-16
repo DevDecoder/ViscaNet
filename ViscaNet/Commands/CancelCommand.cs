@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 
-namespace ViscaNet.Commands
+namespace DevDecoder.ViscaNet.Commands
 {
     public class CancelCommand : Command
     {

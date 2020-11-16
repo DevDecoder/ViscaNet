@@ -2,9 +2,9 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using ViscaNet.Commands;
+using DevDecoder.ViscaNet.Commands;
 
-namespace ViscaNet
+namespace DevDecoder.ViscaNet
 {
     internal class ViscaException : Exception
     {

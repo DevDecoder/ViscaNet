@@ -3,7 +3,7 @@
 
 using System;
 
-namespace ViscaNet.Commands
+namespace DevDecoder.ViscaNet.Commands
 {
     /// <summary>
     ///     Enum ViscaResponseType indicates the type of a response from a Visca camera.

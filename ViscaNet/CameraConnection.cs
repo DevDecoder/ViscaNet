@@ -9,12 +9,12 @@ using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using DevDecoder.ViscaNet.Commands;
+using DevDecoder.ViscaNet.Transports;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Threading;
-using ViscaNet.Commands;
-using ViscaNet.Transports;
 
-namespace ViscaNet
+namespace DevDecoder.ViscaNet
 {
     public sealed class CameraConnection : IDisposable
     {
